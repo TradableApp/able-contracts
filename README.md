@@ -34,17 +34,18 @@ $ABLE supports a tokenised ecosystem for advanced trading and AI services:
 
 1. Create a `.env.testnet` file (see `.env.example`) with the following:
 
-```env
-PRIVATE_KEY=your_private_key
-BASE_SEPOLIA_RPC=https://sepolia.base.org
-BASE_SEPOLIA_CHAIN_ID=84532
+````env
+OWNER_ADDRESS=your_owner_address_here
+PRIVATE_KEY=your_private_key_here
 INITIAL_SUPPLY=1000000000000000000000000000
-OWNER_ADDRESS=your_wallet_address
-ETHERSCAN_API_KEY=your_etherscan_api_key
-```
+BASE_SEPOLIA_RPC=https://sepolia.base.org
+BASE_MAINNET_RPC=https://mainnet.base.org
+ETHERSCAN_API_KEY=your_basescan_api_key_here
+COINMARKETCAP_API_KEY=your_coinmarketcap_api_key_here
+REPORT_GAS=true```
 
 2. Install dependencies:
 
 ```bash
 npm install
-```
+````
