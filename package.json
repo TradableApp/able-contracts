@@ -1,0 +1,55 @@
+{
+  "name": "able-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for the $ABLE token and the broader Tradable ecosystem. Includes the ERC-20 token, on-chain payment logic, staking, governance, and integration with SenseAI on our Aurora Virtual Chain.",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "lint": "solhint 'contracts/**/*.sol'",
+    "format": "prettier --write 'contracts/**/*.sol'",
+    "deploy:testnet": "ENV_FILE=.env.testnet npx hardhat run scripts/deploy.js --network baseSepolia",
+    "deploy:mainnet": "ENV_FILE=.env.mainnet npx hardhat run scripts/deploy.js --network base"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TradableApp/able-contracts.git"
+  },
+  "keywords": [
+    "ERC20",
+    "smart-contracts",
+    "token",
+    "staking",
+    "governance",
+    "SenseAI",
+    "Aurora"
+  ],
+  "author": "Tradable Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TradableApp/able-contracts/issues"
+  },
+  "homepage": "https://github.com/TradableApp/able-contracts#readme",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.0.0",
+    "@openzeppelin/hardhat-upgrades": "^3.9.1",
+    "chai": "^4.2.0",
+    "dotenv": "^17.0.1",
+    "hardhat": "^2.25.0",
+    "hardhat-gas-reporter": "^2.3.0",
+    "prettier": "^3.6.2",
+    "prettier-plugin-solidity": "^2.0.0",
+    "solhint": "^6.0.0",
+    "solidity-coverage": "^0.8.16"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.3.0",
+    "@openzeppelin/contracts-upgradeable": "^5.3.0"
+  }
+}
