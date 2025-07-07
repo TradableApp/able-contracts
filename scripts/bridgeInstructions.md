@@ -17,7 +17,7 @@ ENV_FILE=.env.testnet npx hardhat run scripts/deploy.js --network baseSepolia
 
 ## 2. Bridge \$ABLE to NEAR via Rainbow Bridge
 
-- Navigate to [Rainbow Bridge](https://bridge.aurora.dev/).
+- Navigate to [Rainbow Bridge](https://rainbowbridge.app/deploy).
 - Bridge the deployed ERC-20 token contract to NEAR.
 - This creates a NEP-141 equivalent on NEAR.
 
@@ -79,7 +79,7 @@ Avoid upgrading the bridged token. Design the system to be forward-compatible vi
 
 **Resources:**
 
-- [Rainbow Bridge](https://bridge.aurora.dev/)
+- [Rainbow Bridge](https://rainbowbridge.app/deploy)
 - [Aurora Virtual Chains Docs](https://aurora.dev/virtual-chains)
 - [Hardhat](https://hardhat.org)
 - [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts)
