@@ -1,8 +1,11 @@
 # 🚀 $ABLE Token – Utility Token for Tradable & SenseAI
 
-Welcome to the public repository for the $ABLE token — the native utility token powering the Tradable platform and SenseAI, a decentralised AI analyst for crypto traders.
+[![License](https://img.shields.io/github/license/TradableApp/able-contracts.svg)](./LICENSE)
+[![Built with Aurora Cloud](https://img.shields.io/badge/built%20with-aurora%20cloud-78FFA1.svg)](https://doc.aurora.dev/aurora-cloud/welcome/introduction)
 
-$ABLE is an ERC-20 token deployed on [Base](https://base.org), bridged to [NEAR](https://near.org) as a NEP-141 token, and used as the base currency on our [Aurora Virtual Chain](https://aurora.dev). It enables verifiable, gas-abstracted AI interactions while serving as the core utility token across our ecosystem.
+> Welcome to the public repository for the $ABLE token — the native utility token powering the Tradable platform and SenseAI, a decentralised AI analyst for crypto traders.
+> 
+> $ABLE is an ERC-20 token deployed on [Base](https://base.org), bridged to [NEAR](https://near.org) as a NEP-141 token, and used as the base currency on our [Aurora Virtual Chain](https://aurora.dev). It enables verifiable, gas-abstracted AI interactions while serving as the core utility token across our ecosystem.
 
 ---
 
