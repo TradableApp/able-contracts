@@ -40,12 +40,20 @@ contract AbleToken is
   bytes32 private constant ABLE_TOKEN_STORAGE_LOCATION =
     keccak256("openzeppelin.storage.AbleToken");
 
-  /// @notice Initializes the contract, setting the initial supply, owner, name, and symbol.
-  /// @dev This function can only be called once on the proxy contract.
+  /// @notice Initializes the contract, setting the name, symbol, initial supply, and owner.
+  /// @dev This function can only be called once on the proxy contract. It's designed to be flexible,
+  /// allowing different token configurations from a single contract source.
+  /// @param _name The name of the ERC20 token (e.g., "ABLE Token").
+  /// @param _symbol The symbol of the ERC20 token (e.g., "ABLE").
   /// @param _initialSupply The total amount of tokens to be minted to the initial owner.
   /// @param _initialOwner The address that will receive the initial supply and contract ownership.
-  function initialize(uint256 _initialSupply, address _initialOwner) public initializer {
-    __ERC20_init("ABLE Token", "ABLE");
+  function initialize(
+    string memory _name,
+    string memory _symbol,
+    uint256 _initialSupply,
+    address _initialOwner
+  ) public initializer {
+    __ERC20_init(_name, _symbol);
     __ERC20Burnable_init();
     __ERC20Pausable_init();
     __Ownable_init(_initialOwner);

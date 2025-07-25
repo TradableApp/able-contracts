@@ -1,85 +1,78 @@
-# Bridging and Virtual Chain Integration for \$ABLE Token
+# Bridge Instructions for $ABLE Token
 
-This document outlines the full lifecycle of deploying and bridging the \$ABLE token from Base to NEAR, setting it as the native token for your Aurora Virtual Chain, deploying smart contracts, and managing upgrades.
+This document outlines the recommended procedure for bridging the $ABLE ERC-20 token to NEAR and using it on your Aurora Virtual Chain, alongside the updated architectural decision to consolidate all smart contract logic onto the Aurora Virtual Chain only.
 
 ---
 
-## 1. Deploy \$ABLE Token on Base (or Other EVM Chain)
+## Step-by-Step Bridge Instructions
 
-- Use Hardhat to deploy the upgradeable `AbleToken` contract.
-- Ensure the initial supply is minted to the deployer.
+### 1. Deploy ERC-20 Token on Base Mainnet
+
+- Use Hardhat to deploy the `AbleToken` contract as a **pure ERC-20 token** with no additional logic.
+- This version serves for liquidity, CEX listings, and as the source for bridging.
+- Example:
 
 ```bash
-ENV_FILE=.env.testnet npx hardhat run scripts/deploy.js --network baseSepolia
+npx hardhat run scripts/deploy.js --network baseSepolia
+```
+
+### 2. Bridge $ABLE to NEAR via OmniBridge
+
+- Use [OmniBridge CLI](https://github.com/Near-One/omni-bridge) or [SDK](https://github.com/Near-One/bridge-sdk-js).
+- Bridge the desired portion of the supply from Base to NEAR.
+- This creates a NEP-141 wrapped representation of $ABLE on NEAR.
+
+### 3. Use $ABLE on Aurora Virtual Chain
+
+- Configure the Aurora Virtual Chain to accept the NEP-141 version of $ABLE.
+- **USDC will be used as the base gas token.**
+- $ABLE will be used solely as a utility token within Tradable’s services (AI, staking, payments).
+
+### 4. Deploy Smart Contracts on Aurora Virtual Chain
+
+- Deploy upgradable contracts directly on the Aurora VC EVM.
+- These contracts will interact with $ABLE as the utility token.
+- Users will experience **gasless transactions**, with Tradable covering gas fees in USDC via Aurora’s relayer.
+
+```bash
+npx hardhat run scripts/deploy.js --network <aurora-vc>
 ```
 
 ---
 
-## 2. Bridge \$ABLE to NEAR via Rainbow Bridge
+## Upgradeability Considerations
 
-- Navigate to [Rainbow Bridge](https://rainbowbridge.app/deploy).
-- Bridge the deployed ERC-20 token contract to NEAR.
-- This creates a NEP-141 equivalent on NEAR.
+### Aurora VC ($ABLE on NEAR)
 
-**Important:** This NEP-141 token will act as the _base token_ (gas token) for the virtual chain.
+- Logic contracts (staking, AI payments, governance) are upgradeable using UUPS on the VC.
+- $ABLE as NEP-141 on VC is used **only for transfer/balance; all logic lives in your contracts**.
 
----
+### Base ($ABLE on Base)
 
-## 3. Configure Aurora Virtual Chain to Use Bridged \$ABLE
-
-- When launching your Aurora Virtual Chain, specify the bridged NEP-141 token as the _base currency_.
-- This allows:
-  - Gas fees to be paid in \$ABLE.
-  - Smart contracts and apps to price interactions in \$ABLE.
+- No smart contract logic beyond ERC-20.
+- Solely for liquidity, listings, and bridging.
 
 ---
 
-## 4. Deploy Smart Contracts on Virtual Chain
+## Why This Architecture?
 
-- Use the virtual chain's EVM interface to deploy your contracts.
-- Contracts can:
-  - Read/write using the bridged \$ABLE token.
-  - Integrate payments, staking, and on-chain AI interactions.
-
-```bash
-npx hardhat run scripts/deploy-contracts.js --network <aurora-vchain>
-```
-
----
-
-## 5. Upgrading the ERC-20 Token (Base → NEAR Considerations)
-
-**Bridging is one-way.** The NEP-141 version of \$ABLE does **not** automatically inherit upgrades made to the original ERC-20 on Base.
-
-### Upgrade Options:
-
-#### Option 1: External Upgradable Contracts
-
-- Avoid upgrading token logic directly.
-- Keep token stable; deploy new logic via external upgradable contracts (e.g., staking, payment).
-
-#### Option 2: Token Aliasing
-
-- Maintain both `ABLEv1` and `ABLEv2`.
-- Use a wrapper contract or internal logic to support both.
-
-### Recommendation:
-
-Avoid upgrading the bridged token. Design the system to be forward-compatible via upgradable modules.
+- **Gasless UX** on Aurora VC.
+- **Simplified upgrades**: only maintain upgrade paths on Aurora VC.
+- **Cleaner user journey**: $ABLE behaves consistently within Tradable.
+- **Base version remains simple for liquidity and CEXs.**
 
 ---
 
 ## Final Notes
 
-- Inform users and partners when upgrades or bridges occur.
-- Ensure NEP-141 version is audited and compliant with Aurora Virtual Chain requirements.
-- For production, coordinate with bridge maintainers and Aurora support before changes.
+- Inform users and partners about bridging.
+- Ensure NEP-141 behavior is audited.
+- Coordinate with Aurora for any future changes to bridging, intents, or VC configurations.
 
 ---
 
 **Resources:**
 
-- [Rainbow Bridge](https://rainbowbridge.app/deploy)
+- [OmniBridge CLI](https://github.com/Near-One/omni-bridge)
 - [Aurora Virtual Chains Docs](https://aurora.dev/virtual-chains)
 - [Hardhat](https://hardhat.org)
-- [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts)

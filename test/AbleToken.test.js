@@ -3,7 +3,13 @@ const { ethers, upgrades } = require("hardhat");
 
 describe("AbleToken: The Truly Complete and Definitive Test Suite", function () {
   let AbleToken, AbleTokenV2, ableToken, owner, addr1, addr2;
+
+  // --- Token Details ---
+  const TOKEN_NAME = "ABLE Token";
+  const TOKEN_SYMBOL = "ABLE";
   const INITIAL_SUPPLY = ethers.parseEther("1000000000");
+
+  // --- Common Amounts ---
   const ONE_HUNDRED_TOKENS = ethers.parseEther("100");
   const FIFTY_TOKENS = ethers.parseEther("50");
   const TWO_HUNDRED_TOKENS = ethers.parseEther("200");
@@ -13,10 +19,14 @@ describe("AbleToken: The Truly Complete and Definitive Test Suite", function () 
     AbleToken = await ethers.getContractFactory("AbleToken");
     AbleTokenV2 = await ethers.getContractFactory("AbleTokenV2");
 
-    ableToken = await upgrades.deployProxy(AbleToken, [INITIAL_SUPPLY, owner.address], {
-      initializer: "initialize",
-      kind: "uups",
-    });
+    ableToken = await upgrades.deployProxy(
+      AbleToken,
+      [TOKEN_NAME, TOKEN_SYMBOL, INITIAL_SUPPLY, owner.address],
+      {
+        initializer: "initialize",
+        kind: "uups",
+      },
+    );
 
     await ableToken.waitForDeployment();
 
@@ -32,8 +42,8 @@ describe("AbleToken: The Truly Complete and Definitive Test Suite", function () 
       expect(await ableToken.owner()).to.equal(owner.address);
       expect(await ableToken.balanceOf(owner.address)).to.equal(INITIAL_SUPPLY);
       expect(await ableToken.totalSupply()).to.equal(INITIAL_SUPPLY);
-      expect(await ableToken.name()).to.equal("ABLE Token");
-      expect(await ableToken.symbol()).to.equal("ABLE");
+      expect(await ableToken.name()).to.equal(TOKEN_NAME);
+      expect(await ableToken.symbol()).to.equal(TOKEN_SYMBOL);
       expect(await ableToken.decimals()).to.equal(18);
     });
 
@@ -151,26 +161,58 @@ describe("AbleToken: The Truly Complete and Definitive Test Suite", function () 
   });
 
   describe("Pausable Functionality", function () {
-    beforeEach(async function () {
-      await ableToken.connect(owner).pause();
+    it("should allow the owner to pause", async function () {
+      await expect(ableToken.connect(owner).pause()).to.emit(ableToken, "Paused");
+      expect(await ableToken.paused()).to.be.true;
     });
 
-    it("should prevent transfers when paused", async function () {
-      await expect(
-        ableToken.transfer(addr1.address, ONE_HUNDRED_TOKENS),
-      ).to.be.revertedWithCustomError(ableToken, "EnforcedPause");
+    it("should prevent non-owners from pausing", async function () {
+      await expect(ableToken.connect(addr1).pause())
+        .to.be.revertedWithCustomError(ableToken, "OwnableUnauthorizedAccount")
+        .withArgs(addr1.address);
     });
 
-    it("should prevent burning when paused", async function () {
-      await expect(ableToken.connect(owner).burn(ONE_HUNDRED_TOKENS)).to.be.revertedWithCustomError(
+    it("should revert when trying to unpause while not paused", async function () {
+      await expect(ableToken.connect(owner).unpause()).to.be.revertedWithCustomError(
         ableToken,
-        "EnforcedPause",
+        "ExpectedPause",
       );
     });
 
-    it("should allow the owner to unpause", async function () {
-      await ableToken.connect(owner).unpause();
-      expect(await ableToken.paused()).to.be.false;
+    context("when paused", function () {
+      beforeEach(async function () {
+        await ableToken.connect(owner).pause();
+      });
+
+      it("should revert when trying to pause while already paused", async function () {
+        await expect(ableToken.connect(owner).pause()).to.be.revertedWithCustomError(
+          ableToken,
+          "EnforcedPause",
+        );
+      });
+
+      it("should allow the owner to unpause", async function () {
+        await ableToken.connect(owner).unpause();
+        expect(await ableToken.paused()).to.be.false;
+      });
+
+      it("should prevent non-owners from unpausing", async function () {
+        await expect(ableToken.connect(addr1).unpause())
+          .to.be.revertedWithCustomError(ableToken, "OwnableUnauthorizedAccount")
+          .withArgs(addr1.address);
+      });
+
+      it("should prevent transfers", async function () {
+        await expect(
+          ableToken.transfer(addr1.address, ONE_HUNDRED_TOKENS),
+        ).to.be.revertedWithCustomError(ableToken, "EnforcedPause");
+      });
+
+      it("should prevent burning", async function () {
+        await expect(
+          ableToken.connect(owner).burn(ONE_HUNDRED_TOKENS),
+        ).to.be.revertedWithCustomError(ableToken, "EnforcedPause");
+      });
     });
   });
 

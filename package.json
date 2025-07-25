@@ -9,12 +9,16 @@
     "coverage": "hardhat coverage",
     "lint": "solhint 'contracts/**/*.sol'",
     "format": "prettier --write 'contracts/**/*.sol'",
+    "// --- ABLE - BASE SEPOLIA TESTNET DEPLOY ---": "---",
     "deploy:testnet": "ENV_FILE=.env.testnet npx hardhat run scripts/deploy.js --network baseSepolia",
+    "// --- TESTABLE - BASE MAINNET DEPLOY ---": "---",
+    "deploy:testable": "ENV_FILE=.env.testable npx hardhat run scripts/deploy.js --network base",
+    "// --- ABLE - BASE MAINNET DEPLOY ---": "---",
     "deploy:mainnet": "ENV_FILE=.env.mainnet npx hardhat run scripts/deploy.js --network base"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/TradableApp/able-contracts.git"
+    "url": "git+https://github.com/TradableApp/able-contracts.git"
   },
   "keywords": [
     "ERC20",
@@ -25,7 +29,7 @@
     "SenseAI",
     "Aurora"
   ],
-  "author": "Tradable Team",
+  "author": "Tradable",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/TradableApp/able-contracts/issues"
@@ -35,6 +39,10 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.3.0",
+    "@openzeppelin/contracts-upgradeable": "^5.3.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.0.0",
@@ -47,9 +55,5 @@
     "prettier-plugin-solidity": "^2.0.0",
     "solhint": "^6.0.0",
     "solidity-coverage": "^0.8.16"
-  },
-  "dependencies": {
-    "@openzeppelin/contracts": "^5.3.0",
-    "@openzeppelin/contracts-upgradeable": "^5.3.0"
   }
 }

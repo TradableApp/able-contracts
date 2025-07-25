@@ -1,7 +1,19 @@
-require("dotenv").config({ path: process.env.ENV_FILE || ".env" });
 require("@nomicfoundation/hardhat-toolbox");
 require("@openzeppelin/hardhat-upgrades");
 require("hardhat-gas-reporter");
+
+const dotenv = require("dotenv");
+
+// 1. Load the environment-specific file first.
+// Its variables take precedence and are loaded into the process.
+if (process.env.ENV_FILE) {
+  dotenv.config({ path: process.env.ENV_FILE });
+}
+
+// 2. Load the base .env file.
+// This will only fill in variables that were NOT defined in the specific file.
+// If a variable already exists, this command will NOT overwrite it.
+dotenv.config({ path: ".env" });
 
 const {
   PRIVATE_KEY,
@@ -21,12 +33,12 @@ module.exports = {
       chainId: 1337,
     },
     base: {
-      url: BASE_MAINNET_RPC || "",
+      url: BASE_MAINNET_RPC || "https://mainnet.base.org",
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
       chainId: 8453,
     },
     baseSepolia: {
-      url: BASE_SEPOLIA_RPC || "",
+      url: BASE_SEPOLIA_RPC || "https://sepolia.base.org",
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
       chainId: 84532,
     },
@@ -49,10 +61,7 @@ module.exports = {
 
   etherscan: {
     // It's good practice to provide a fallback to prevent errors
-    apiKey: {
-      base: process.env.ETHERSCAN_API_KEY || "",
-      baseSepolia: process.env.ETHERSCAN_API_KEY || "", // Etherscan uses the same key for Base Sepolia
-    },
+    apiKey: process.env.ETHERSCAN_API_KEY || "",
     // Your customChains block is the correct and most robust way to define L2s
     customChains: [
       {
