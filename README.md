@@ -5,7 +5,7 @@
 
 > Welcome to the public repository for the $ABLE token — the native utility token powering the Tradable platform and SenseAI, a decentralised AI analyst for crypto traders.
 >
-> $ABLE is an ERC-20 token deployed on [Base](https://base.org), bridged to [NEAR](https://near.org) as a NEP-141 token, and used as the base currency on our [Aurora Virtual Chain](https://aurora.dev). It enables verifiable, gas-abstracted AI interactions while serving as the core utility token across our ecosystem.
+> $ABLE is an ERC-20 token deployed on [Polygon](https://polygon.technology/), bridged to [NEAR](https://near.org) as a NEP-141 token, and used as the base currency on our [Aurora Virtual Chain](https://aurora.dev). It enables verifiable, gas-abstracted AI interactions while serving as the core utility token across our ecosystem.
 
 ---
 
@@ -25,7 +25,7 @@ $ABLE supports a tokenised ecosystem for advanced trading and AI services:
 - Compliant ERC-20 with fixed supply cap
 - Built with [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts)
 - Upgradeable using the UUPS proxy pattern
-- Cross-chain ready: Base → NEAR → Aurora VC
+- Cross-chain ready: Polygon → NEAR → Aurora VC
 - Fully tested with Hardhat
 - Open-source under the MIT License
 
@@ -42,9 +42,9 @@ OWNER_ADDRESS=your_owner_address_here
 PRIVATE_KEY=your_private_key_here
 CONTRACT_ADDRESS=your_contract_address_here
 INITIAL_SUPPLY=1000000000000000000000000000
-BASE_SEPOLIA_RPC=https://sepolia.base.org
-BASE_MAINNET_RPC=https://mainnet.base.org
-ETHERSCAN_API_KEY=your_basescan_api_key_here
+POLYGON_AMOY_RPC=https://rpc-amoy.polygon.technology
+POLYGON_MAINNET_RPC=https://polygon-rpc.com
+ETHERSCAN_API_KEY=your_etherscan_api_key_here
 COINMARKETCAP_API_KEY=your_coinmarketcap_api_key_here
 REPORT_GAS=true
 ```
