@@ -57,12 +57,9 @@ module.exports = {
   },
 
   // Configuration for Etherscan contract verification
-  // In your hardhat.config.js
-
   etherscan: {
     // It's good practice to provide a fallback to prevent errors
     apiKey: process.env.ETHERSCAN_API_KEY || "",
-    // Your customChains block is the correct and most robust way to define L2s
     customChains: [
       {
         network: "base",

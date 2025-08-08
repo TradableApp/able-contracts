@@ -2,7 +2,7 @@
 pragma solidity ^0.8.21;
 
 // Important: Import the V1 contract to inherit its storage layout and functionality.
-import "./AbleToken.sol";
+import { AbleToken } from "../AbleToken.sol";
 
 /// @title ABLE Token V2
 /// @author Your Name/Organization
