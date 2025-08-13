@@ -18,12 +18,14 @@ import {
   UUPSUpgradeable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-/// @title ABLE Token
-/// @author Tradable
-/// @notice A deflationary, pausable, and upgradeable ERC20 token for payments, platform utility,
-/// and AI agent transactions.
-/// @dev Implements ERC20, Burnable, Pausable, Ownable, and UUPS functionalities using OpenZeppelin
-/// upgradeable contracts.
+/**
+ * @title ABLE Token
+ * @author Tradable
+ * @notice A deflationary, pausable, and upgradeable ERC20 token for payments, platform utility,
+ * and AI agent transactions.
+ * @dev Implements ERC20, Burnable, Pausable, Ownable, and UUPS functionalities using OpenZeppelin
+ * upgradeable contracts.
+ */
 contract AbleToken is
   Initializable,
   ERC20Upgradeable,
@@ -32,21 +34,25 @@ contract AbleToken is
   OwnableUpgradeable,
   UUPSUpgradeable
 {
+  /// @notice EIP-7201 compliant storage struct for the AbleToken contract.
   /// @custom:storage-location erc7201:openzeppelin.storage.AbleToken
   struct AbleTokenStorage {
-    bool _gap; // EIP-1822 compliant storage gap for future upgrades.
+    bool _gap; // Storage gap for future upgrades to prevent storage collisions.
   }
 
+  /// @notice The EIP-7201 storage slot identifier for this contract's storage.
   bytes32 private constant ABLE_TOKEN_STORAGE_LOCATION =
     keccak256("openzeppelin.storage.AbleToken");
 
-  /// @notice Initializes the contract, setting the name, symbol, initial supply, and owner.
-  /// @dev This function can only be called once on the proxy contract. It's designed to be flexible,
-  /// allowing different token configurations from a single contract source.
-  /// @param _name The name of the ERC20 token (e.g., "ABLE Token").
-  /// @param _symbol The symbol of the ERC20 token (e.g., "ABLE").
-  /// @param _initialSupply The total amount of tokens to be minted to the initial owner.
-  /// @param _initialOwner The address that will receive the initial supply and contract ownership.
+  /**
+   * @notice Initializes the contract, setting the name, symbol, initial supply, and owner.
+   * @dev This function can only be called once on the proxy contract. It's designed to be flexible,
+   *      allowing different token configurations from a single contract source.
+   * @param _name The name of the ERC20 token (e.g., "ABLE Token").
+   * @param _symbol The symbol of the ERC20 token (e.g., "ABLE").
+   * @param _initialSupply The total amount of tokens to be minted to the initial owner.
+   * @param _initialOwner The address that will receive the initial supply and contract ownership.
+   */
   function initialize(
     string memory _name,
     string memory _symbol,
@@ -62,25 +68,31 @@ contract AbleToken is
     _mint(_initialOwner, _initialSupply);
   }
 
-  /// @notice Pauses all token transfers.
-  /// @dev Can only be called by the contract owner. Emits a {Paused} event.
-  /// All functions using the `whenNotPaused` modifier will be blocked.
+  /**
+   * @notice Pauses all token transfers, minting, and burning.
+   * @dev Can only be called by the contract owner. Emits a {Paused} event.
+   *      All functions using the `whenNotPaused` modifier will be blocked.
+   */
   function pause() public onlyOwner {
     _pause();
   }
 
-  /// @notice Unpauses the contract, resuming all token transfers.
-  /// @dev Can only be called by the contract owner. Emits an {Unpaused} event.
+  /**
+   * @notice Unpauses the contract, resuming all token transfers.
+   * @dev Can only be called by the contract owner. Emits an {Unpaused} event.
+   */
   function unpause() public onlyOwner {
     _unpause();
   }
 
-  /// @dev Hook that is called before any token transfer, including minting and burning.
-  /// @dev Overridden to combine the ERC20 and ERC20Pausable `_update` functions, ensuring transfers
-  /// are blocked when paused.
-  /// @param from The address from which tokens are being sent.
-  /// @param to The address to which tokens are being sent.
-  /// @param value The amount of tokens being transferred.
+  /**
+   * @dev Hook that is called before any token transfer, including minting and burning.
+   *      Overridden to combine the ERC20 and ERC20Pausable `_update` functions, ensuring transfers
+   *      are blocked when the contract is paused.
+   * @param from The address from which tokens are being sent.
+   * @param to The address to which tokens are being sent.
+   * @param value The amount of tokens being transferred.
+   */
   function _update(
     address from,
     address to,
@@ -89,10 +101,12 @@ contract AbleToken is
     super._update(from, to, value);
   }
 
-  /// @dev Authorizes an upgrade to a new implementation contract.
-  /// @dev This internal function is part of the UUPS upgrade mechanism. Access is restricted to the
-  /// owner via the `onlyOwner` modifier.
-  /// @param _newImplementation The address of the new implementation contract.
+  /**
+   * @dev Authorizes an upgrade to a new implementation contract.
+   *      This internal function is part of the UUPS upgrade mechanism. Access is restricted to the
+   *      owner via the `onlyOwner` modifier.
+   * @param _newImplementation The address of the new implementation contract.
+   */
   function _authorizeUpgrade(address _newImplementation) internal override onlyOwner {
     // solhint-disable-previous-line no-empty-blocks
     // Intentionally left blank. The onlyOwner modifier provides the necessary access control.
