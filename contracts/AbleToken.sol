@@ -86,8 +86,8 @@ contract AbleToken is
   }
 
   /**
-   * @dev Hook that is called before any token transfer, including minting and burning.
-   *      Overridden to combine the ERC20 and ERC20Pausable `_update` functions, ensuring transfers
+   * @notice Hook that is called before any token transfer, including minting and burning.
+   * @dev Overridden to combine the ERC20 and ERC20Pausable `_update` functions, ensuring transfers
    *      are blocked when the contract is paused.
    * @param from The address from which tokens are being sent.
    * @param to The address to which tokens are being sent.
@@ -102,12 +102,11 @@ contract AbleToken is
   }
 
   /**
-   * @dev Authorizes an upgrade to a new implementation contract.
-   *      This internal function is part of the UUPS upgrade mechanism. Access is restricted to the
-   *      owner via the `onlyOwner` modifier.
-   * @param _newImplementation The address of the new implementation contract.
+   * @notice This internal function is part of the UUPS upgrade mechanism.
+   * @dev Authorizes an upgrade to a new implementation contract. Access is restricted to the owner.
+   * @param newImplementation The address of the new implementation contract.
    */
-  function _authorizeUpgrade(address _newImplementation) internal override onlyOwner {
+  function _authorizeUpgrade(address newImplementation) internal override onlyOwner {
     // solhint-disable-previous-line no-empty-blocks
     // Intentionally left blank. The onlyOwner modifier provides the necessary access control.
   }
