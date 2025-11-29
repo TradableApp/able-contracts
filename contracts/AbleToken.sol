@@ -110,4 +110,6 @@ contract AbleToken is
     // solhint-disable-previous-line no-empty-blocks
     // Intentionally left blank. The onlyOwner modifier provides the necessary access control.
   }
+
+  uint256[50] private __gap;
 }

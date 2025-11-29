@@ -1,6 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("@openzeppelin/hardhat-upgrades");
 require("hardhat-gas-reporter");
+require("hardhat-storage-layout");
 
 const dotenv = require("dotenv");
 
@@ -58,7 +59,18 @@ module.exports = {
         enabled: true,
         runs: 10000, // The number of runs should be tuned based on contract usage.
       },
+      outputSelection: {
+        "*": {
+          "*": ["storageLayout"], // <--- Enable this compiler output
+        },
+      },
     },
+  },
+
+  storageLayout: {
+    fullPath: true,
+    check: true,
+    include: ["AbleToken"],
   },
 
   // Configuration for Etherscan contract verification
