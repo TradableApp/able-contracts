@@ -28,14 +28,12 @@ describe("AbleToken — Mint and Burn", function () {
 
   // --- MINT ---
 
-  it("owner can mint tokens to any address", async function () {
-    // initialize() mints INITIAL_SUPPLY to the designated owner address.
+  it("initialize() mints total supply to the designated owner address", async function () {
     const { token, owner } = await loadFixture(deployFixture);
     expect(await token.balanceOf(owner.address)).to.equal(INITIAL_SUPPLY);
   });
 
-  it("mint increases totalSupply and recipient balance", async function () {
-    // After initialization: totalSupply == INITIAL_SUPPLY, all held by owner.
+  it("totalSupply and owner balance equal INITIAL_SUPPLY after initialization", async function () {
     const { token, owner } = await loadFixture(deployFixture);
     expect(await token.totalSupply()).to.equal(INITIAL_SUPPLY);
     expect(await token.balanceOf(owner.address)).to.equal(INITIAL_SUPPLY);
