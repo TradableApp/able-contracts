@@ -166,6 +166,11 @@ node_modules
 # Hardhat Ignition default folder for deployments against a local node
 ignition/deployments/chain-31337
 
+# Claude Code — local only
+.claude/settings.local.json
+.claude/memory/
+.mcp.json
+
 # Local tmux/dmux session files
 .tmux-devfleet/
 .dmux/
