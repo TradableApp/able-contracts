@@ -73,9 +73,7 @@ describe("AbleToken — Edge cases and production readiness", function () {
 
     it("transferFrom of zero tokens succeeds with zero allowance", async function () {
       const { token, owner, addr1, addr2 } = await loadFixture(deployFixture);
-      await expect(
-        token.connect(addr1).transferFrom(owner.address, addr2.address, 0n),
-      )
+      await expect(token.connect(addr1).transferFrom(owner.address, addr2.address, 0n))
         .to.emit(token, "Transfer")
         .withArgs(owner.address, addr2.address, 0n);
     });
@@ -140,9 +138,10 @@ describe("AbleToken — Edge cases and production readiness", function () {
     it("zero-amount transfer reverts while paused", async function () {
       const { token, owner, addr1 } = await loadFixture(deployFixture);
       await token.connect(owner).pause();
-      await expect(
-        token.connect(owner).transfer(addr1.address, 0n),
-      ).to.be.revertedWithCustomError(token, "EnforcedPause");
+      await expect(token.connect(owner).transfer(addr1.address, 0n)).to.be.revertedWithCustomError(
+        token,
+        "EnforcedPause",
+      );
     });
 
     it("transfer succeeds after pause-unpause cycle", async function () {
@@ -320,9 +319,7 @@ describe("AbleToken — Edge cases and production readiness", function () {
       expect(await token.balanceOf(addr1.address)).to.equal(ONE_HUNDRED);
       expect(await token.balanceOf(addr2.address)).to.equal(ONE_HUNDRED);
       expect(await token.balanceOf(addr3.address)).to.equal(ONE_HUNDRED);
-      expect(await token.balanceOf(owner.address)).to.equal(
-        INITIAL_SUPPLY - ONE_HUNDRED * 3n,
-      );
+      expect(await token.balanceOf(owner.address)).to.equal(INITIAL_SUPPLY - ONE_HUNDRED * 3n);
     });
 
     it("transferFrom to zero address reverts", async function () {
