@@ -49,7 +49,7 @@
     "@nomicfoundation/hardhat-toolbox": "^6.0.0",
     "@openzeppelin/hardhat-upgrades": "^3.9.1",
     "chai": "^4.2.0",
-    "dotenv": "^17.0.1",
+    "dotenv": "^17.4.2",
     "hardhat": "^2.25.0",
     "hardhat-gas-reporter": "^2.3.0",
     "hardhat-storage-layout": "^0.1.7",
