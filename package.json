@@ -50,7 +50,7 @@
     "@openzeppelin/hardhat-upgrades": "^3.9.1",
     "chai": "^4.2.0",
     "dotenv": "^17.0.1",
-    "hardhat": "^2.25.0",
+    "hardhat": "^3.7.0",
     "hardhat-gas-reporter": "^2.3.0",
     "hardhat-storage-layout": "^0.1.7",
     "prettier": "^3.6.2",
