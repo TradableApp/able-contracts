@@ -96,7 +96,6 @@ After `npm run compile`, ABI artifacts are consumed by two sibling repos:
 - ABI artifacts from this repo are consumed by `sense-ai-dapp` via its `sync-contracts` script
 - `hardhat-storage-layout` is enabled; `npm run compile` emits storage layout data to `storageLayout/`
 - The `storageLayout.check: true` config in `hardhat.config.js` validates layout compatibility on each compile — this is what catches unsafe upgrades early
-- `._*` dotfiles (macOS AppleDouble metadata) are automatically excluded by Mocha/Hardhat glob patterns — no explicit test-config exclusion needed beyond `.gitignore`
 
 ## MCP Tools
 
