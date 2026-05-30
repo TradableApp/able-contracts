@@ -13,7 +13,7 @@ This document outlines the recommended procedure for bridging the $ABLE ERC-20 t
 - Example:
 
 ```bash
-npx hardhat run scripts/deploy.js --network baseSepolia
+bunx hardhat run scripts/deploy.js --network baseSepolia
 ```
 
 ### 2. Bridge $ABLE to NEAR via OmniBridge
@@ -35,7 +35,7 @@ npx hardhat run scripts/deploy.js --network baseSepolia
 - Users will experience **gasless transactions**, with Tradable covering gas fees in USDC via Aurora’s relayer.
 
 ```bash
-npx hardhat run scripts/deploy.js --network <aurora-vc>
+bunx hardhat run scripts/deploy.js --network <aurora-vc>
 ```
 
 ---

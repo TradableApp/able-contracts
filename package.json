@@ -10,13 +10,13 @@
     "lint": "solhint 'contracts/**/*.sol'",
     "format": "prettier --write 'contracts/**/*.sol'",
     "// --- ABLE - LOCAL DEPLOY ---": "---",
-    "deploy:localnet": "ENV_FILE=.env.localnet npx hardhat run scripts/deploy.js --network localhost",
+    "deploy:localnet": "ENV_FILE=.env.localnet hardhat run scripts/deploy.js --network localhost",
     "// --- ABLE - BASE SEPOLIA TESTNET DEPLOY ---": "---",
-    "deploy:testnet": "ENV_FILE=.env.testnet npx hardhat run scripts/deploy.js --network baseSepolia",
+    "deploy:testnet": "ENV_FILE=.env.testnet hardhat run scripts/deploy.js --network baseSepolia",
     "// --- TESTABLE - BASE MAINNET DEPLOY ---": "---",
-    "deploy:testable": "ENV_FILE=.env.testable npx hardhat run scripts/deploy.js --network base",
+    "deploy:testable": "ENV_FILE=.env.testable hardhat run scripts/deploy.js --network base",
     "// --- ABLE - BASE MAINNET DEPLOY ---": "---",
-    "deploy:mainnet": "ENV_FILE=.env.mainnet npx hardhat run scripts/deploy.js --network base"
+    "deploy:mainnet": "ENV_FILE=.env.mainnet hardhat run scripts/deploy.js --network base"
   },
   "repository": {
     "type": "git",
@@ -39,8 +39,7 @@
   "homepage": "https://github.com/TradableApp/able-contracts#readme",
   "type": "commonjs",
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.3.0",

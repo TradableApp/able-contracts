@@ -52,5 +52,5 @@ REPORT_GAS=true
 2. Install dependencies:
 
 ```bash
-npm install
+bun install
 ```

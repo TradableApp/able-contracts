@@ -10,24 +10,24 @@ Solidity smart contracts for the Tradable platform. The primary contract is `Abl
 
 | Command | Purpose |
 |---------|---------|
-| `npm run compile` | Compile contracts (always run before test) |
-| `npm run test` | Run full test suite |
-| `npm run coverage` | Generate coverage report |
-| `npm run lint` | Lint Solidity with solhint |
-| `npm run format` | Format contracts with prettier-plugin-solidity |
-| `npm run deploy:localnet` | Deploy to local Hardhat node (`ENV_FILE=.env.localnet`) |
-| `npm run deploy:testnet` | Deploy to Base Sepolia (`ENV_FILE=.env.testnet`) |
-| `npm run deploy:testable` | Deploy "testable" variant to Base mainnet (`ENV_FILE=.env.testable`) |
-| `npm run deploy:mainnet` | Deploy ABLE to Base mainnet (`ENV_FILE=.env.mainnet`) |
+| `bun run compile` | Compile contracts (always run before test) |
+| `bun run test` | Run full test suite |
+| `bun run coverage` | Generate coverage report |
+| `bun run lint` | Lint Solidity with solhint |
+| `bun run format` | Format contracts with prettier-plugin-solidity |
+| `bun run deploy:localnet` | Deploy to local Hardhat node (`ENV_FILE=.env.localnet`) |
+| `bun run deploy:testnet` | Deploy to Base Sepolia (`ENV_FILE=.env.testnet`) |
+| `bun run deploy:testable` | Deploy "testable" variant to Base mainnet (`ENV_FILE=.env.testable`) |
+| `bun run deploy:mainnet` | Deploy ABLE to Base mainnet (`ENV_FILE=.env.mainnet`) |
 
 **Run a single test file:**
 ```bash
-npx hardhat test test/AbleToken.test.js
+bunx hardhat test test/AbleToken.test.js
 ```
 
 **Run with gas reporting:**
 ```bash
-REPORT_GAS=true npm run test
+REPORT_GAS=true bun run test
 ```
 
 ## Architecture
@@ -85,18 +85,17 @@ AbleToken is the **payment token** for the SenseAI protocol. `EVMAIAgentEscrow` 
 
 ### ABI consumers
 
-After `npm run compile`, ABI artifacts are consumed by two sibling repos:
+After `bun run compile`, ABI artifacts are consumed by two sibling repos:
 
-1. **`sense-ai-dapp`** — run `npm run sync-contracts` in `sense-ai-dapp/` to copy ABI JSON files into `src/lib/abi/`. Always compile here first before syncing.
+1. **`sense-ai-dapp`** — run `bun run sync-contracts` in `sense-ai-dapp/` to copy ABI JSON files into `src/lib/abi/`. Always compile here first before syncing.
 2. **`sense-ai-subgraph`** — `abis/AbleToken.json` must also be kept in sync if AbleToken events are ever indexed (currently not indexed — only `EVMAIAgent` and `EVMAIAgentEscrow` events are).
 
 ## Key Notes
 
 - `deploy:mainnet` is irreversible — confirm intent before running
 - ABI artifacts from this repo are consumed by `sense-ai-dapp` via its `sync-contracts` script
-- `hardhat-storage-layout` is enabled; `npm run compile` emits storage layout data to `storageLayout/`
+- `hardhat-storage-layout` is enabled; `bun run compile` emits storage layout data to `storageLayout/`
 - The `storageLayout.check: true` config in `hardhat.config.js` validates layout compatibility on each compile — this is what catches unsafe upgrades early
-- `._*` dotfiles (macOS AppleDouble metadata) are automatically excluded by Mocha/Hardhat glob patterns — no explicit test-config exclusion needed beyond `.gitignore`
 
 ## MCP Tools
 

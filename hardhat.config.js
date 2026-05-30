@@ -99,7 +99,7 @@ module.exports = {
 
   // Configuration for the hardhat-gas-reporter plugin
   gasReporter: {
-    enabled: process.env.REPORT_GAS === "true", // Run with `REPORT_GAS=true npx hardhat test`
+    enabled: process.env.REPORT_GAS === "true", // Run with `REPORT_GAS=true bunx hardhat test`
     currency: "USD",
     currencyDisplayPrecision: 8,
     L2: "base", // Use 'base' for Base Mainnet
