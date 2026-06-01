@@ -1,5 +1,6 @@
 # 🚀 $ABLE Token – Utility Token for Tradable & SenseAI
 
+[![CI](https://img.shields.io/github/actions/workflow/status/TradableApp/able-contracts/ci.yml?branch=main&label=CI)](https://github.com/TradableApp/able-contracts/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/TradableApp/able-contracts.svg)](./LICENSE)
 [![Built with Aurora Cloud](https://img.shields.io/badge/built%20with-aurora%20cloud-78FFA1.svg)](https://doc.aurora.dev/aurora-cloud/welcome/introduction)
 
