@@ -176,3 +176,4 @@ ignition/deployments/chain-31337
 .dmux/
 .dmux-hooks/
 .dmux-session/
+.claude/PRPs/
