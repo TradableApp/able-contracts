@@ -12,8 +12,8 @@ import {
   ERC20PausableUpgradeable
 } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
 import {
-  OwnableUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+  Ownable2StepUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {
   UUPSUpgradeable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -31,18 +31,25 @@ contract AbleToken is
   ERC20Upgradeable,
   ERC20BurnableUpgradeable,
   ERC20PausableUpgradeable,
-  OwnableUpgradeable,
+  Ownable2StepUpgradeable,
   UUPSUpgradeable
 {
-  /// @notice EIP-7201 compliant storage struct for the AbleToken contract.
-  /// @custom:storage-location erc7201:openzeppelin.storage.AbleToken
-  struct AbleTokenStorage {
-    bool _gap; // Storage gap for future upgrades to prevent storage collisions.
-  }
+  /// @notice Thrown by {renounceOwnership} — ownership of this token cannot be abandoned.
+  error OwnershipCannotBeRenounced();
 
-  /// @notice The EIP-7201 storage slot identifier for this contract's storage.
-  bytes32 private constant ABLE_TOKEN_STORAGE_LOCATION =
-    keccak256("openzeppelin.storage.AbleToken");
+  /**
+   * @notice Locks the implementation contract so it can never be initialised directly.
+   * @dev Without this, anyone can call {initialize} on the implementation that sits behind
+   *      the proxy and become its owner. That cannot reach the proxy's storage, and OZ v5's
+   *      `onlyProxy` guard blocks upgrading through it — but it does leave an attacker with a
+   *      source-verified, identical-bytecode "ABLE Token" at a real address, which is ideal
+   *      material for fake liquidity pools and phishing. OpenZeppelin's documented rule is
+   *      blunt: "Do not leave an implementation contract uninitialized."
+   */
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
 
   /**
    * @notice Initializes the contract, setting the name, symbol, initial supply, and owner.
@@ -63,6 +70,7 @@ contract AbleToken is
     __ERC20Burnable_init();
     __ERC20Pausable_init();
     __Ownable_init(_initialOwner);
+    __Ownable2Step_init();
     __UUPSUpgradeable_init();
 
     _mint(_initialOwner, _initialSupply);
@@ -83,6 +91,17 @@ contract AbleToken is
    */
   function unpause() public onlyOwner {
     _unpause();
+  }
+
+  /**
+   * @notice Disabled — ownership of this token cannot be renounced.
+   * @dev Inherited {renounceOwnership} would set the owner to address(0) permanently, which on
+   *      an upgradeable, pausable token means no further {pause}, {unpause} or upgrade is ever
+   *      possible. There is no recovery from that, so the function is made to revert rather
+   *      than left reachable.
+   */
+  function renounceOwnership() public view override onlyOwner {
+    revert OwnershipCannotBeRenounced();
   }
 
   /**
