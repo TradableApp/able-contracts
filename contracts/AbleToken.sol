@@ -49,7 +49,7 @@ contract AbleToken is
   ///      for the upgrade checker, not storage.
   /// @custom:storage-location erc7201:openzeppelin.storage.AbleToken
   struct AbleTokenStorage {
-    bool _gap; // Storage gap for future upgrades to prevent storage collisions.
+    bool _gap; // Frozen — do not add, remove or rename. See the NatSpec above.
   }
 
   /// @notice Thrown by {renounceOwnership} — ownership of this token cannot be abandoned.

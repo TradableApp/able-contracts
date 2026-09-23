@@ -9,17 +9,27 @@ const {
 } = require("@openzeppelin/upgrades-core");
 // Deep import, verified against @openzeppelin/hardhat-upgrades@3.9.1 — recheck this path when
 // bumping that dependency, since dist/ is internal and carries no semver guarantee.
-// hardhat-upgrades does not re-export this. A plugin bump can break it two ways —
-// the file moves (MODULE_NOT_FOUND here, obvious) or the file survives but the export is renamed,
-// which would otherwise surface much later as an opaque "readValidations is not a function"
-// inside a test. The guard collapses both into one failure, at load, that names the cause.
-const {
-  readValidations,
-} = require("@openzeppelin/hardhat-upgrades/dist/utils/validations");
+// hardhat-upgrades does not re-export this, so a plugin bump can break it three ways: the file
+// moves, the file survives but the export is renamed, or both survive and the signature changes.
+// All three abort at load or on first use with a message naming the cause — none of them is
+// allowed to leave the storage checks silently comparing nothing. The third is caught in
+// compiledLayout below; the two here.
+const VALIDATIONS_PATH = "@openzeppelin/hardhat-upgrades/dist/utils/validations";
+
+let readValidations;
+try {
+  ({ readValidations } = require(VALIDATIONS_PATH));
+} catch (error) {
+  throw new Error(
+    `Cannot load ${VALIDATIONS_PATH}. The plugin has been restructured; find where ` +
+      "readValidations moved to before the storage checks can run.",
+    { cause: error },
+  );
+}
 
 if (typeof readValidations !== "function") {
   throw new Error(
-    "readValidations is no longer exported by @openzeppelin/hardhat-upgrades/dist/utils/validations. " +
+    `readValidations is no longer exported by ${VALIDATIONS_PATH}. ` +
       "The plugin has been restructured; find its replacement before trusting the storage checks below.",
   );
 }
