@@ -70,6 +70,11 @@ const LIVE_PROXY = "0xD77FF82e661C3838a59ea78bbF31F8c4c2BD8A80";
 
 const ABLE_TOKEN_NAMESPACE = "erc7201:openzeppelin.storage.AbleToken";
 
+// Bounds for the initialize() source slice asserted below. Kept as constants so the uniqueness
+// check and the slice cannot drift apart.
+const START_ANCHOR = "  ) public initializer {";
+const END_ANCHOR = "    _mint(_initialOwner, _initialSupply);";
+
 /**
  * Every AbleToken implementation the manifest records as having been deployed on Base.
  *
@@ -302,12 +307,20 @@ describe("AbleToken — security hardening", function () {
       // and slice(start, -1) then runs to one character short of the file — which contained
       // both strings below and passed while proving nothing. Asserting only that the slice is
       // non-empty does not catch it, because that fires only when BOTH bounds miss.
-      const startIndex = source.indexOf("  ) public initializer {");
-      const endIndex = source.indexOf("    _mint(_initialOwner, _initialSupply);");
+      const startIndex = source.indexOf(START_ANCHOR);
+      const endIndex = source.indexOf(END_ANCHOR);
 
       expect(startIndex, "could not locate the start of initialize()").to.be.greaterThan(-1);
       expect(endIndex, "could not locate the end of initialize()").to.be.greaterThan(-1);
       expect(endIndex, "initialize() bounds are inverted").to.be.greaterThan(startIndex);
+
+      // indexOf takes the FIRST match, so a second identical _mint added earlier inside
+      // initialize() would silently shorten the slice past the lines under test. The bounds
+      // check above does not catch that, because such a match is still after startIndex.
+      expect(
+        source.split(END_ANCHOR).length - 1,
+        `${END_ANCHOR.trim()} appears more than once — the end anchor is no longer unique`,
+      ).to.equal(1);
 
       const initializeBody = source.slice(startIndex, endIndex);
 
@@ -368,6 +381,9 @@ describe("AbleToken — security hardening", function () {
         // Throws with OZ's own diagnosis — "Deleted namespace ...", "Inserted variable ..." —
         // which names the offending change. Re-deleting the erc7201 struct reds this.
         try {
+          // {} is strict mode, not a placeholder: unsafeAllowRenames, unsafeSkipStorageCheck
+          // and the rest all default to false. Do not add allowances here to unblock a failing
+          // test — a failure here means the upgrade is genuinely unsafe.
           assertStorageUpgradeSafe(layout, current, {});
         } catch (error) {
           error.message = `against deployed implementation ${address}:\n${error.message}`;
