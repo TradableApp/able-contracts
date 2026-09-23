@@ -110,8 +110,16 @@ contract AbleToken is
    *      an upgradeable, pausable token means no further {pause}, {unpause} or upgrade is ever
    *      possible. There is no recovery from that, so the function is made to revert rather
    *      than left reachable.
+   *
+   *      solc warns "Function state mutability can be restricted to view" here. Do NOT act on
+   *      it. Marking this `view` flips the ABI's `stateMutability` from `nonpayable` to `view`,
+   *      and consumers dispatch on that field: ethers v6 sends `view` calls through `eth_call`
+   *      instead of a transaction, and Safe{Wallet} files them under read-only rather than the
+   *      admin write panel next to {pause} and {transferOwnership}. The warning is unavoidable
+   *      for any always-reverting override — `onlyOwner` reads state but writes none — so it is
+   *      accepted deliberately in exchange for an ABI that matches the inherited function.
    */
-  function renounceOwnership() public view override onlyOwner {
+  function renounceOwnership() public override onlyOwner {
     revert OwnershipCannotBeRenounced();
   }
 
