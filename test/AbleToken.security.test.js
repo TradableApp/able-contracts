@@ -121,6 +121,18 @@ async function compiledLayout(contractName) {
     );
   }
 
+  // Non-empty is not the same as right. Without this, a layout belonging to some other contract
+  // would reach assertStorageUpgradeSafe and fail as "Deleted namespace erc7201:...AbleToken" —
+  // the identical message you get from actually deleting the struct from the source. A tooling
+  // fault would then read as a source fault, and be "fixed" in the wrong file.
+  if (!layout.namespaces[ABLE_TOKEN_NAMESPACE]) {
+    throw new Error(
+      `Compiled layout for ${contractName} does not declare ${ABLE_TOKEN_NAMESPACE}. ` +
+        "This is a layout for some other contract — readValidations or getStorageLayout is " +
+        "returning the wrong thing. The contract source is not the problem; do not edit it.",
+    );
+  }
+
   return layout;
 }
 

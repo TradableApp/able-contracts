@@ -130,6 +130,14 @@ contract AbleToken is
    *      possible. There is no recovery from that, so the function is made to revert rather
    *      than left reachable.
    *
+   *      Switching to {Ownable2StepUpgradeable} does not make this unnecessary. That contract
+   *      overrides `transferOwnership` and `_transferOwnership`, but deliberately leaves
+   *      `renounceOwnership` alone — it is still `OwnableUpgradeable`'s, which calls
+   *      `_transferOwnership(address(0))` in a single step with no pending-owner to accept.
+   *      Two-step ownership protects transfers, not renouncing. This override is the only
+   *      thing standing between the token and a permanently ownerless proxy, so do not remove
+   *      it on the reasoning that the base class now handles ownership safely.
+   *
    *      `onlyOwner` is kept, so a non-owner receives {OwnableUnauthorizedAccount} while the
    *      owner receives {OwnershipCannotBeRenounced}. That split is deliberate: each caller is
    *      told the thing that is true of them, and it keeps the modifier set identical to the
