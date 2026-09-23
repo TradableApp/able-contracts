@@ -6,11 +6,20 @@ const {
   getStorageLayout,
   getVersion,
 } = require("@openzeppelin/upgrades-core");
-// Deep import: hardhat-upgrades does not re-export this. If a plugin bump moves it, this throws
-// at require time with a clear module-not-found — a loud break, not a silently skipped check.
+// Deep import: hardhat-upgrades does not re-export this. A plugin bump can break it two ways —
+// the file moves (MODULE_NOT_FOUND here, obvious) or the file survives but the export is renamed,
+// which would otherwise surface much later as an opaque "readValidations is not a function"
+// inside a test. The guard collapses both into one failure, at load, that names the cause.
 const {
   readValidations,
 } = require("@openzeppelin/hardhat-upgrades/dist/utils/validations");
+
+if (typeof readValidations !== "function") {
+  throw new Error(
+    "readValidations is no longer exported by @openzeppelin/hardhat-upgrades/dist/utils/validations. " +
+      "The plugin has been restructured; find its replacement before trusting the storage checks below.",
+  );
+}
 
 // The deployment manifest OpenZeppelin wrote for Base mainnet. This is the same artifact
 // `upgradeProxy` reads to decide whether an upgrade is safe, so it is the authoritative record

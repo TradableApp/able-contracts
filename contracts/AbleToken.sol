@@ -80,6 +80,11 @@ contract AbleToken is
     __ERC20_init(_name, _symbol);
     __ERC20Burnable_init();
     __ERC20Pausable_init();
+    // __Ownable_init is what actually assigns _owner, and it is required: OZ v5's
+    // __Ownable2Step_init() is an empty body that does NOT chain to __Ownable_init_unchained().
+    // Do not remove it. The __Ownable2Step_init() call below is a no-op today and is kept so
+    // that state added to Ownable2Step by a future OZ release is initialised automatically —
+    // an omission there would not fail any test, it would only show up on a live deployment.
     __Ownable_init(_initialOwner);
     __Ownable2Step_init();
     __UUPSUpgradeable_init();
