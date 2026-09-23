@@ -293,12 +293,23 @@ describe("AbleToken — security hardening", function () {
         path.join(__dirname, "..", "contracts", "AbleToken.sol"),
         "utf8",
       );
-      const initializeBody = source.slice(
-        source.indexOf("  ) public initializer {"),
-        source.indexOf("    _mint(_initialOwner, _initialSupply);"),
-      );
+      // Both bounds are asserted before slicing. A missing END anchor makes indexOf return -1,
+      // and slice(start, -1) then runs to one character short of the file — which contained
+      // both strings below and passed while proving nothing. Asserting only that the slice is
+      // non-empty does not catch it, because that fires only when BOTH bounds miss.
+      const startIndex = source.indexOf("  ) public initializer {");
+      const endIndex = source.indexOf("    _mint(_initialOwner, _initialSupply);");
 
-      expect(initializeBody, "could not locate initialize()'s body").to.not.equal("");
+      expect(startIndex, "could not locate the start of initialize()").to.be.greaterThan(-1);
+      expect(endIndex, "could not locate the end of initialize()").to.be.greaterThan(-1);
+      expect(endIndex, "initialize() bounds are inverted").to.be.greaterThan(startIndex);
+
+      const initializeBody = source.slice(startIndex, endIndex);
+
+      // Proves the slice really is bounded to initialize() rather than half the file: pause()
+      // is declared after it, so its presence would mean the end anchor did not hold.
+      expect(initializeBody, "slice escaped initialize()").to.not.contain("function pause()");
+
       expect(initializeBody).to.contain("__Ownable_init(_initialOwner);");
       expect(initializeBody).to.contain("__Ownable2Step_init();");
     });
@@ -313,8 +324,15 @@ describe("AbleToken — security hardening", function () {
   describe("the storage checks read one upgrades-core, not two", function () {
     it("resolves the same instance through both import paths", function () {
       const direct = require.resolve("@openzeppelin/upgrades-core");
+      // paths[] takes module search ROOTS, not files. Passing the plugin's entry point works
+      // today only because Node walks up from it; package.json is the one file guaranteed to
+      // sit at the package root regardless of "main" or an "exports" map, so resolve that and
+      // take its directory.
+      const pluginRoot = path.dirname(
+        require.resolve("@openzeppelin/hardhat-upgrades/package.json"),
+      );
       const viaPlugin = require.resolve("@openzeppelin/upgrades-core", {
-        paths: [require.resolve("@openzeppelin/hardhat-upgrades")],
+        paths: [pluginRoot],
       });
 
       expect(viaPlugin, "upgrades-core resolved to two different copies").to.equal(direct);
