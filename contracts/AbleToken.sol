@@ -99,6 +99,9 @@ contract AbleToken is
     // upgrade, so an already-deployed proxy moving to an OZ release that adds Ownable2Step
     // state would get that state zero-initialised by the EVM, not by this call. Such an upgrade
     // needs a reinitializer — which matters here, because the live proxy is exactly that case.
+    // Nothing reds if this is missed: it surfaces only once the new OZ version is in use. The
+    // check belongs in the review of any contracts-upgradeable bump, and is tracked so it does
+    // not live only here — see https://app.clickup.com/t/14ym9bv7dy4
     __Ownable_init(_initialOwner);
     __Ownable2Step_init();
     __UUPSUpgradeable_init();

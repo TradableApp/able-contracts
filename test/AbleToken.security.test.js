@@ -50,9 +50,14 @@ function assertPluginApiIntact() {
   }
 
   if (typeof readValidations !== "function") {
+    // The module loaded, so this is a renamed or withdrawn export rather than a move — say so,
+    // and list what the module does export, which is usually enough to spot the new name
+    // without anyone having to go and read the plugin.
+    const exported = Object.keys(require(VALIDATIONS_PATH)).sort().join(", ");
     throw new Error(
-      `readValidations is no longer exported by ${VALIDATIONS_PATH}. ` +
-        "The plugin has been restructured; find its replacement before trusting the storage checks below.",
+      `${VALIDATIONS_PATH} loaded but does not export a readValidations function. ` +
+        `It was renamed or withdrawn, not moved. Available exports: ${exported}. ` +
+        "Find its replacement before trusting the storage checks below.",
     );
   }
 }
@@ -310,8 +315,15 @@ describe("AbleToken — security hardening", function () {
       // is declared after it, so its presence would mean the end anchor did not hold.
       expect(initializeBody, "slice escaped initialize()").to.not.contain("function pause()");
 
-      expect(initializeBody).to.contain("__Ownable_init(_initialOwner);");
-      expect(initializeBody).to.contain("__Ownable2Step_init();");
+      // Anchored to the start of a line, not a substring match: `.contain()` is satisfied by
+      // "// __Ownable2Step_init();", so commenting the call out — the most likely form of the
+      // cleanup this test exists to catch — would have passed.
+      expect(initializeBody, "__Ownable_init call missing or commented out").to.match(
+        /^\s*__Ownable_init\(_initialOwner\);/m,
+      );
+      expect(initializeBody, "__Ownable2Step_init call missing or commented out").to.match(
+        /^\s*__Ownable2Step_init\(\);/m,
+      );
     });
   });
 
