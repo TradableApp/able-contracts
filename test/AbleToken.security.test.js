@@ -1,3 +1,5 @@
+const fs = require("node:fs/promises");
+const path = require("node:path");
 const { expect } = require("chai");
 const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 const hre = require("hardhat");
@@ -22,21 +24,37 @@ const {
 const VALIDATIONS_PATH = "@openzeppelin/hardhat-upgrades/dist/utils/validations";
 
 let readValidations;
+let importFailure;
 try {
   ({ readValidations } = require(VALIDATIONS_PATH));
 } catch (error) {
-  throw new Error(
-    `Cannot load ${VALIDATIONS_PATH}. The plugin has been restructured; find where ` +
-      "readValidations moved to before the storage checks can run.",
-    { cause: error },
-  );
+  importFailure = error;
 }
 
-if (typeof readValidations !== "function") {
-  throw new Error(
-    `readValidations is no longer exported by ${VALIDATIONS_PATH}. ` +
-      "The plugin has been restructured; find its replacement before trusting the storage checks below.",
-  );
+/**
+ * Both plugin-API guards, deferred to a before() hook rather than run at module load.
+ *
+ * Throwing at load would abort the whole hardhat run, so one broken import would take every
+ * other test file in the repo down with it and report "An unexpected error occurred" instead of
+ * a named failure. From a hook, mocha attributes the failure to this describe, skips only its
+ * tests, and the rest of the suite still reports — which is what you want when triaging whether
+ * a dependency bump broke the tooling or the contract.
+ */
+function assertPluginApiIntact() {
+  if (importFailure) {
+    throw new Error(
+      `Cannot load ${VALIDATIONS_PATH}. The plugin has been restructured; find where ` +
+        "readValidations moved to before the storage checks can run.",
+      { cause: importFailure },
+    );
+  }
+
+  if (typeof readValidations !== "function") {
+    throw new Error(
+      `readValidations is no longer exported by ${VALIDATIONS_PATH}. ` +
+        "The plugin has been restructured; find its replacement before trusting the storage checks below.",
+    );
+  }
 }
 
 // The deployment manifest OpenZeppelin wrote for Base mainnet. This is the same artifact
@@ -85,7 +103,7 @@ function deployedLayouts() {
   }
 
   const layouts = Object.values(BASE_MANIFEST.impls)
-    .filter((impl) => Object.keys(impl.layout.namespaces || {}).includes(ABLE_TOKEN_NAMESPACE))
+    .filter((impl) => Object.keys(impl.layout?.namespaces || {}).includes(ABLE_TOKEN_NAMESPACE))
     .map((impl) => ({ address: impl.address, layout: impl.layout }));
 
   if (layouts.length === 0) {
@@ -166,6 +184,8 @@ async function deployProxyFixture() {
 
 // Security hardening regressions — from the 2026-09-22 cross-repo review.
 describe("AbleToken — security hardening", function () {
+  before(assertPluginApiIntact);
+
   describe("implementation contract cannot be taken over", function () {
     it("reverts when initialize() is called directly on the implementation", async function () {
       const { implementation, attacker } = await loadFixture(deployImplementationFixture);
@@ -258,6 +278,29 @@ describe("AbleToken — security hardening", function () {
 
       expect(fn, "renounceOwnership missing from the ABI").to.not.equal(undefined);
       expect(fn.stateMutability).to.equal("nonpayable");
+    });
+  });
+
+  // __Ownable2Step_init() is an empty body in OZ v5, so there is nothing observable at runtime
+  // to assert — the call is kept purely so that state a future OZ release adds to Ownable2Step
+  // is initialised on fresh deployments. That makes it exactly the kind of line a cleanup
+  // deletes as dead code, with nothing to red. A source assertion is a blunt instrument and is
+  // used deliberately, for the same reason the ABI test exists: a comment saying "do not remove"
+  // loses to a reader who can see the function is empty.
+  describe("the Ownable2Step initialiser call is not quietly dropped", function () {
+    it("initialize() still calls __Ownable2Step_init()", async function () {
+      const source = await fs.readFile(
+        path.join(__dirname, "..", "contracts", "AbleToken.sol"),
+        "utf8",
+      );
+      const initializeBody = source.slice(
+        source.indexOf("  ) public initializer {"),
+        source.indexOf("    _mint(_initialOwner, _initialSupply);"),
+      );
+
+      expect(initializeBody, "could not locate initialize()'s body").to.not.equal("");
+      expect(initializeBody).to.contain("__Ownable_init(_initialOwner);");
+      expect(initializeBody).to.contain("__Ownable2Step_init();");
     });
   });
 
