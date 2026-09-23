@@ -1,4 +1,5 @@
 const { expect } = require("chai");
+const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 const hre = require("hardhat");
 const { ethers, upgrades } = hre;
 const {
@@ -40,10 +41,14 @@ const ABLE_TOKEN_NAMESPACE = "erc7201:openzeppelin.storage.AbleToken";
  * positionally or pin an address by hand — both of which need a human to remember something
  * after every mainnet upgrade — validate against ALL of them.
  *
- * That needs no maintenance and is not weaker: each deployed implementation was itself a valid
- * upgrade of the one before it, so recorded layouts only ever grow, and compatibility with the
- * newest implies compatibility with the older ones. If a storage-breaking migration is ever done
- * deliberately, this reds loudly and a human looks at it — which is the correct outcome.
+ * That needs no maintenance, and checking all of them is never weaker than checking only the
+ * newest. Be precise about why, because the obvious argument runs the wrong way: IF every
+ * historical upgrade was additive, then compatibility with the newest already implies
+ * compatibility with the older ones and checking them all is merely redundant. The value is in
+ * not having to assume that. Where the assumption fails — a migration done with
+ * unsafeSkipStorageCheck, or a layout edited by hand — an older baseline catches what the newest
+ * would wave through. So this is equivalent in the good case and stricter in the bad one, which
+ * is the right shape for a check whose job is to fail.
  *
  * Implementations are selected by the namespace this token declares, so an unrelated contract
  * deployed to Base through this same manifest cannot drag a foreign layout into the comparison.
@@ -99,36 +104,50 @@ async function compiledLayout(contractName) {
   return layout;
 }
 
+const NAME = "ABLE Token";
+const SYMBOL = "ABLE";
+const SUPPLY = ethers.parseEther("1000000000");
+
+/** The logic contract deployed on its own, exactly as an attacker finds it behind the proxy. */
+async function deployImplementationFixture() {
+  const [, attacker] = await ethers.getSigners();
+  const AbleToken = await ethers.getContractFactory("AbleToken");
+  const implementation = await AbleToken.deploy();
+  await implementation.waitForDeployment();
+
+  return { implementation, attacker };
+}
+
+/** An initialised proxy, for the ownership tests. */
+async function deployProxyFixture() {
+  const [owner, newOwner, stranger] = await ethers.getSigners();
+  const AbleToken = await ethers.getContractFactory("AbleToken");
+  const token = await upgrades.deployProxy(
+    AbleToken,
+    [NAME, SYMBOL, SUPPLY, owner.address],
+    { initializer: "initialize", kind: "uups" },
+  );
+  await token.waitForDeployment();
+
+  return { token, owner, newOwner, stranger };
+}
+
 // Security hardening regressions — from the 2026-09-22 cross-repo review.
 describe("AbleToken — security hardening", function () {
-  const NAME = "ABLE Token";
-  const SYMBOL = "ABLE";
-  const SUPPLY = ethers.parseEther("1000000000");
-
   describe("implementation contract cannot be taken over", function () {
     it("reverts when initialize() is called directly on the implementation", async function () {
-      const [, attacker] = await ethers.getSigners();
-
-      // Deploy the logic contract on its own, exactly as an attacker would find it
-      // on-chain behind the proxy.
-      const AbleToken = await ethers.getContractFactory("AbleToken");
-      const implementation = await AbleToken.deploy();
-      await implementation.waitForDeployment();
+      const { implementation, attacker } = await loadFixture(deployImplementationFixture);
 
       // Without constructor() { _disableInitializers(); } this SUCCEEDS and hands the
       // attacker ownership of a source-verified, identical-bytecode token at a real
       // address — usable for fake pools and phishing.
       await expect(
-        implementation
-          .connect(attacker)
-          .initialize(NAME, SYMBOL, SUPPLY, attacker.address),
+        implementation.connect(attacker).initialize(NAME, SYMBOL, SUPPLY, attacker.address),
       ).to.be.revertedWithCustomError(implementation, "InvalidInitialization");
     });
 
     it("leaves the implementation with no owner and no supply", async function () {
-      const AbleToken = await ethers.getContractFactory("AbleToken");
-      const implementation = await AbleToken.deploy();
-      await implementation.waitForDeployment();
+      const { implementation } = await loadFixture(deployImplementationFixture);
 
       expect(await implementation.owner()).to.equal(ethers.ZeroAddress);
       expect(await implementation.totalSupply()).to.equal(0n);
@@ -137,14 +156,7 @@ describe("AbleToken — security hardening", function () {
 
   describe("ownership transfer is two-step", function () {
     it("does not hand ownership over until the recipient accepts", async function () {
-      const [owner, newOwner] = await ethers.getSigners();
-      const AbleToken = await ethers.getContractFactory("AbleToken");
-      const token = await upgrades.deployProxy(
-        AbleToken,
-        [NAME, SYMBOL, SUPPLY, owner.address],
-        { initializer: "initialize", kind: "uups" },
-      );
-      await token.waitForDeployment();
+      const { token, owner, newOwner } = await loadFixture(deployProxyFixture);
 
       await token.connect(owner).transferOwnership(newOwner.address);
 
@@ -160,14 +172,7 @@ describe("AbleToken — security hardening", function () {
 
   describe("ownership cannot be abandoned", function () {
     it("reverts renounceOwnership so pause and upgrade authority can never be stranded", async function () {
-      const [owner] = await ethers.getSigners();
-      const AbleToken = await ethers.getContractFactory("AbleToken");
-      const token = await upgrades.deployProxy(
-        AbleToken,
-        [NAME, SYMBOL, SUPPLY, owner.address],
-        { initializer: "initialize", kind: "uups" },
-      );
-      await token.waitForDeployment();
+      const { token, owner } = await loadFixture(deployProxyFixture);
 
       await expect(
         token.connect(owner).renounceOwnership(),
@@ -180,14 +185,7 @@ describe("AbleToken — security hardening", function () {
     // a non-owner is told they are not the owner, the owner is told the operation is disabled.
     // Pinned because it is a documented choice, not an accident of modifier ordering.
     it("tells a non-owner they are unauthorised rather than that renouncing is disabled", async function () {
-      const [owner, stranger] = await ethers.getSigners();
-      const AbleToken = await ethers.getContractFactory("AbleToken");
-      const token = await upgrades.deployProxy(
-        AbleToken,
-        [NAME, SYMBOL, SUPPLY, owner.address],
-        { initializer: "initialize", kind: "uups" },
-      );
-      await token.waitForDeployment();
+      const { token, stranger } = await loadFixture(deployProxyFixture);
 
       await expect(token.connect(stranger).renounceOwnership())
         .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
