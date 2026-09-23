@@ -1,5 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity 0.8.24;
+
+//
+// FROZEN BASELINE — DO NOT EDIT.
+//
+// A byte-for-byte copy of the AbleToken implementation that is DEPLOYED behind the live
+// proxies ($TESTABLE on Base mainnet at 0xD77FF82e661C3838a59ea78bbF31F8c4c2BD8A80).
+// It exists only so the test suite can assert that the current AbleToken is a storage-
+// compatible upgrade of what is actually on-chain. Editing it to make a test pass defeats
+// the entire point: the chain will not change to match.
+//
+// When a new implementation is genuinely deployed to the proxies, replace this file with
+// that implementation and say so in the commit.
+//
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {
@@ -12,8 +25,8 @@ import {
   ERC20PausableUpgradeable
 } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PausableUpgradeable.sol";
 import {
-  Ownable2StepUpgradeable
-} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+  OwnableUpgradeable
+} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {
   UUPSUpgradeable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -26,41 +39,23 @@ import {
  * @dev Implements ERC20, Burnable, Pausable, Ownable, and UUPS functionalities using OpenZeppelin
  * upgradeable contracts.
  */
-contract AbleToken is
+contract AbleTokenDeployedBaseline is
   Initializable,
   ERC20Upgradeable,
   ERC20BurnableUpgradeable,
   ERC20PausableUpgradeable,
-  Ownable2StepUpgradeable,
+  OwnableUpgradeable,
   UUPSUpgradeable
 {
-  /// @notice Retained solely to preserve the deployed ERC-7201 storage namespace.
-  /// @dev Nothing reads or writes this struct — it never held live data. It must nevertheless
-  ///      stay declared: deleting a namespace that the deployed implementation declared makes
-  ///      OpenZeppelin's `assertStorageUpgradeSafe` reject the upgrade ("Deleted namespace
-  ///      `erc7201:openzeppelin.storage.AbleToken`"), which would block `upgradeProxy` on the
-  ///      live proxy. Removing it buys nothing and costs the upgrade path.
+  /// @notice EIP-7201 compliant storage struct for the AbleToken contract.
   /// @custom:storage-location erc7201:openzeppelin.storage.AbleToken
   struct AbleTokenStorage {
     bool _gap; // Storage gap for future upgrades to prevent storage collisions.
   }
 
-  /// @notice Thrown by {renounceOwnership} — ownership of this token cannot be abandoned.
-  error OwnershipCannotBeRenounced();
-
-  /**
-   * @notice Locks the implementation contract so it can never be initialised directly.
-   * @dev Without this, anyone can call {initialize} on the implementation that sits behind
-   *      the proxy and become its owner. That cannot reach the proxy's storage, and OZ v5's
-   *      `onlyProxy` guard blocks upgrading through it — but it does leave an attacker with a
-   *      source-verified, identical-bytecode "ABLE Token" at a real address, which is ideal
-   *      material for fake liquidity pools and phishing. OpenZeppelin's documented rule is
-   *      blunt: "Do not leave an implementation contract uninitialized."
-   */
-  /// @custom:oz-upgrades-unsafe-allow constructor
-  constructor() {
-    _disableInitializers();
-  }
+  /// @notice The EIP-7201 storage slot identifier for this contract's storage.
+  bytes32 private constant ABLE_TOKEN_STORAGE_LOCATION =
+    keccak256("openzeppelin.storage.AbleToken");
 
   /**
    * @notice Initializes the contract, setting the name, symbol, initial supply, and owner.
@@ -81,7 +76,6 @@ contract AbleToken is
     __ERC20Burnable_init();
     __ERC20Pausable_init();
     __Ownable_init(_initialOwner);
-    __Ownable2Step_init();
     __UUPSUpgradeable_init();
 
     _mint(_initialOwner, _initialSupply);
@@ -102,17 +96,6 @@ contract AbleToken is
    */
   function unpause() public onlyOwner {
     _unpause();
-  }
-
-  /**
-   * @notice Disabled — ownership of this token cannot be renounced.
-   * @dev Inherited {renounceOwnership} would set the owner to address(0) permanently, which on
-   *      an upgradeable, pausable token means no further {pause}, {unpause} or upgrade is ever
-   *      possible. There is no recovery from that, so the function is made to revert rather
-   *      than left reachable.
-   */
-  function renounceOwnership() public view override onlyOwner {
-    revert OwnershipCannotBeRenounced();
   }
 
   /**

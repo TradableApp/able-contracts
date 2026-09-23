@@ -78,4 +78,27 @@ describe("AbleToken — security hardening", function () {
       expect(await token.owner()).to.equal(owner.address);
     });
   });
+
+  // The hardening above changes the inheritance chain and the contract's declared storage.
+  // Neither may break the upgrade path of the token that is already live on Base mainnet:
+  // if it does, the proxy is stranded on its current implementation forever.
+  describe("remains a storage-compatible upgrade of the deployed implementation", function () {
+    it("passes OpenZeppelin's upgrade-safety check against the deployed baseline", async function () {
+      const deployed = await ethers.getContractFactory("AbleTokenDeployedBaseline");
+      const current = await ethers.getContractFactory("AbleToken");
+
+      // Throws "New storage layout is incompatible" if the hardening dropped or reordered
+      // anything the live proxy depends on — e.g. deleting the erc7201 namespace struct,
+      // which OZ treats as a deleted namespace even though it never held live data.
+      // Awaited directly rather than wrapped: on failure OZ's own message ("Deleted
+      // namespace ...", "Inserted variable ...") is what tells you which change broke it.
+      await upgrades.validateUpgrade(deployed, current, { kind: "uups" });
+    });
+
+    it("is itself a valid UUPS implementation", async function () {
+      const current = await ethers.getContractFactory("AbleToken");
+
+      await upgrades.validateImplementation(current, { kind: "uups" });
+    });
+  });
 });
