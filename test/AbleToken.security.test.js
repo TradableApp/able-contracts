@@ -18,8 +18,26 @@ const {
 const BASE_MANIFEST = require("../.openzeppelin/base.json");
 const LIVE_PROXY = "0xD77FF82e661C3838a59ea78bbF31F8c4c2BD8A80";
 
-/** The storage layout of the implementation currently deployed behind the live proxy. */
-function deployedLayout() {
+const ABLE_TOKEN_NAMESPACE = "erc7201:openzeppelin.storage.AbleToken";
+
+/**
+ * Every AbleToken implementation the manifest records as having been deployed on Base.
+ *
+ * The v3.2 manifest format stores no proxy -> implementation reference (a proxy entry carries
+ * only address, txHash and kind), so there is no machine-readable way to ask which single
+ * implementation the proxy currently points at without querying the chain. Rather than guess
+ * positionally or pin an address by hand — both of which need a human to remember something
+ * after every mainnet upgrade — validate against ALL of them.
+ *
+ * That needs no maintenance and is not weaker: each deployed implementation was itself a valid
+ * upgrade of the one before it, so recorded layouts only ever grow, and compatibility with the
+ * newest implies compatibility with the older ones. If a storage-breaking migration is ever done
+ * deliberately, this reds loudly and a human looks at it — which is the correct outcome.
+ *
+ * Implementations are selected by the namespace this token declares, so an unrelated contract
+ * deployed to Base through this same manifest cannot drag a foreign layout into the comparison.
+ */
+function deployedLayouts() {
   const proxy = BASE_MANIFEST.proxies.find(
     (p) => p.address.toLowerCase() === LIVE_PROXY.toLowerCase(),
   );
@@ -29,14 +47,20 @@ function deployedLayout() {
         "This test compares against the live token; it cannot run against another manifest.",
     );
   }
-  const impls = Object.values(BASE_MANIFEST.impls);
-  if (impls.length !== 1) {
+
+  const layouts = Object.values(BASE_MANIFEST.impls)
+    .filter((impl) => Object.keys(impl.layout.namespaces || {}).includes(ABLE_TOKEN_NAMESPACE))
+    .map((impl) => ({ address: impl.address, layout: impl.layout }));
+
+  if (layouts.length === 0) {
     throw new Error(
-      `Expected exactly one implementation in .openzeppelin/base.json, found ${impls.length}. ` +
-        "Pick the one the proxy points at rather than guessing.",
+      `No implementation in .openzeppelin/base.json declares ${ABLE_TOKEN_NAMESPACE}. ` +
+        "Either the manifest is for a different project, or the namespace was dropped from a " +
+        "deployed implementation — both mean this check is no longer proving anything.",
     );
   }
-  return impls[0].layout;
+
+  return layouts;
 }
 
 /** The storage layout the current sources compile to. */
@@ -149,25 +173,33 @@ describe("AbleToken — security hardening", function () {
   // copy carried a variable the live implementation does not have. A copy drifts; the manifest
   // records what was actually deployed and cannot.
   describe("remains a storage-compatible upgrade of the live Base mainnet proxy", function () {
-    it("passes OpenZeppelin's storage check against the deployed implementation", async function () {
-      const deployed = deployedLayout();
+    it("passes OpenZeppelin's storage check against every deployed implementation", async function () {
       const current = await compiledLayout("AbleToken");
 
-      // Throws with OZ's own diagnosis — "Deleted namespace ...", "Inserted variable ..." — which
-      // names the offending change. Re-deleting the erc7201 AbleToken struct reds this.
-      assertStorageUpgradeSafe(deployed, current, {});
+      for (const { address, layout } of deployedLayouts()) {
+        // Throws with OZ's own diagnosis — "Deleted namespace ...", "Inserted variable ..." —
+        // which names the offending change. Re-deleting the erc7201 struct reds this.
+        try {
+          assertStorageUpgradeSafe(layout, current, {});
+        } catch (error) {
+          error.message = `against deployed implementation ${address}:\n${error.message}`;
+          throw error;
+        }
+      }
     });
 
-    it("still declares every storage namespace the deployed implementation declares", async function () {
-      const deployed = deployedLayout();
+    it("still declares every storage namespace the deployed implementations declare", async function () {
       const current = await compiledLayout("AbleToken");
 
       // Stated separately from the check above because this is the specific failure that nearly
       // shipped: dropping the inert `AbleTokenStorage` struct deletes a namespace the live
       // implementation declares, and OZ rejects the upgrade even though the struct held no data.
-      expect(Object.keys(current.namespaces)).to.include.members(
-        Object.keys(deployed.namespaces),
-      );
+      for (const { address, layout } of deployedLayouts()) {
+        expect(
+          Object.keys(current.namespaces),
+          `namespaces missing versus deployed implementation ${address}`,
+        ).to.include.members(Object.keys(layout.namespaces));
+      }
     });
 
     it("is itself a valid UUPS implementation", async function () {
