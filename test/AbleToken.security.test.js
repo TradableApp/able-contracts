@@ -168,6 +168,21 @@ describe("AbleToken — security hardening", function () {
       await token.connect(newOwner).acceptOwnership();
       expect(await token.owner()).to.equal(newOwner.address);
     });
+
+    it("does not let a stranger claim a pending transfer", async function () {
+      const { token, owner, newOwner, stranger } = await loadFixture(deployProxyFixture);
+
+      await token.connect(owner).transferOwnership(newOwner.address);
+
+      // The pending entry is public, so the window between propose and accept is visible to
+      // anyone watching. OZ guards it; a hardening suite should say so rather than assume it.
+      await expect(token.connect(stranger).acceptOwnership())
+        .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+        .withArgs(stranger.address);
+
+      expect(await token.owner()).to.equal(owner.address);
+      expect(await token.pendingOwner()).to.equal(newOwner.address);
+    });
   });
 
   describe("ownership cannot be abandoned", function () {
@@ -211,6 +226,23 @@ describe("AbleToken — security hardening", function () {
 
       expect(fn, "renounceOwnership missing from the ABI").to.not.equal(undefined);
       expect(fn.stateMutability).to.equal("nonpayable");
+    });
+  });
+
+  // readValidations comes from hardhat-upgrades' own copy of upgrades-core, while
+  // getStorageLayout/getVersion/assertStorageUpgradeSafe come from the copy this package
+  // declares. They must be the same instance: the validations map is keyed by getVersion(), so
+  // two copies disagreeing on that hash produce a miss rather than a layout. The empty-namespace
+  // guard in compiledLayout would catch the consequence, but it would read as a plugin API
+  // change rather than a dependency split — so assert the coupling directly instead.
+  describe("the storage checks read one upgrades-core, not two", function () {
+    it("resolves the same instance through both import paths", function () {
+      const direct = require.resolve("@openzeppelin/upgrades-core");
+      const viaPlugin = require.resolve("@openzeppelin/upgrades-core", {
+        paths: [require.resolve("@openzeppelin/hardhat-upgrades")],
+      });
+
+      expect(viaPlugin, "upgrades-core resolved to two different copies").to.equal(direct);
     });
   });
 

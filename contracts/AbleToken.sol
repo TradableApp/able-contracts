@@ -169,5 +169,11 @@ contract AbleToken is
     // Intentionally left blank. The onlyOwner modifier provides the necessary access control.
   }
 
+  /// @dev Reserved slots for future non-namespaced storage. Note this is NOT present in the
+  ///      implementation currently deployed behind the live proxies: it was added after that
+  ///      deployment, so `.openzeppelin/base.json` records `storage: []` for the deployed
+  ///      implementation while every artifact built from this source carries the gap. That
+  ///      difference is an append, which OpenZeppelin permits, and is asserted by the storage
+  ///      tests — but do not try to reconcile the two layouts by eye and conclude one is wrong.
   uint256[50] private __gap;
 }
