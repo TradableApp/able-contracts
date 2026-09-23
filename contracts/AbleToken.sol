@@ -116,6 +116,12 @@ contract AbleToken is
    *      possible. There is no recovery from that, so the function is made to revert rather
    *      than left reachable.
    *
+   *      `onlyOwner` is kept, so a non-owner receives {OwnableUnauthorizedAccount} while the
+   *      owner receives {OwnershipCannotBeRenounced}. That split is deliberate: each caller is
+   *      told the thing that is true of them, and it keeps the modifier set identical to the
+   *      inherited function being replaced. Dropping it would report the policy to callers who
+   *      are also not authorised, which is less informative, not more.
+   *
    *      solc warns "Function state mutability can be restricted to view" here. Do NOT act on
    *      it. Marking this `view` flips the ABI's `stateMutability` from `nonpayable` to `view`,
    *      and consumers dispatch on that field: ethers v6 sends `view` calls through `eth_call`

@@ -6,7 +6,9 @@ const {
   getStorageLayout,
   getVersion,
 } = require("@openzeppelin/upgrades-core");
-// Deep import: hardhat-upgrades does not re-export this. A plugin bump can break it two ways —
+// Deep import, verified against @openzeppelin/hardhat-upgrades@3.9.1 — recheck this path when
+// bumping that dependency, since dist/ is internal and carries no semver guarantee.
+// hardhat-upgrades does not re-export this. A plugin bump can break it two ways —
 // the file moves (MODULE_NOT_FOUND here, obvious) or the file survives but the export is renamed,
 // which would otherwise surface much later as an opaque "readValidations is not a function"
 // inside a test. The guard collapses both into one failure, at load, that names the cause.
@@ -154,6 +156,24 @@ describe("AbleToken — security hardening", function () {
       ).to.be.revertedWithCustomError(token, "OwnershipCannotBeRenounced");
 
       expect(await token.owner()).to.equal(owner.address);
+    });
+
+    // The two callers get different errors by design (see the @dev note on the function):
+    // a non-owner is told they are not the owner, the owner is told the operation is disabled.
+    // Pinned because it is a documented choice, not an accident of modifier ordering.
+    it("tells a non-owner they are unauthorised rather than that renouncing is disabled", async function () {
+      const [owner, stranger] = await ethers.getSigners();
+      const AbleToken = await ethers.getContractFactory("AbleToken");
+      const token = await upgrades.deployProxy(
+        AbleToken,
+        [NAME, SYMBOL, SUPPLY, owner.address],
+        { initializer: "initialize", kind: "uups" },
+      );
+      await token.waitForDeployment();
+
+      await expect(token.connect(stranger).renounceOwnership())
+        .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
+        .withArgs(stranger.address);
     });
 
     // solc suggests `view` on an always-reverting override. Taking that suggestion silently
