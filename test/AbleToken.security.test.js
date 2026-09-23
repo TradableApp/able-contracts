@@ -74,11 +74,29 @@ function deployedLayouts() {
   return layouts;
 }
 
-/** The storage layout the current sources compile to. */
+/**
+ * The storage layout the current sources compile to.
+ *
+ * The returned layout is sanity-checked rather than trusted. The readValidations import above is
+ * an internal one, and a restructuring that kept the name but changed the signature would satisfy
+ * the typeof guard while handing back something useless — at which point a storage check that
+ * compares nothing against nothing would quietly pass. An empty namespace map is not a valid
+ * layout for this contract under any circumstances, so treat it as the plugin having moved.
+ */
 async function compiledLayout(contractName) {
   const validations = await readValidations(hre);
   const factory = await ethers.getContractFactory(contractName);
-  return getStorageLayout(validations, getVersion(factory.bytecode));
+  const layout = getStorageLayout(validations, getVersion(factory.bytecode));
+
+  if (!layout || Object.keys(layout.namespaces || {}).length === 0) {
+    throw new Error(
+      `Compiled layout for ${contractName} has no namespaces. getStorageLayout returned ` +
+        "something this test cannot use — most likely @openzeppelin/hardhat-upgrades changed " +
+        "the signature of readValidations or getStorageLayout. Do not trust the checks below.",
+    );
+  }
+
+  return layout;
 }
 
 // Security hardening regressions — from the 2026-09-22 cross-repo review.
@@ -176,6 +194,12 @@ describe("AbleToken — security hardening", function () {
         .withArgs(stranger.address);
     });
 
+    // Reads the on-disk artifact, so it asserts what was last compiled. That is the current
+    // source under `bun run test` (plain `hardhat test`, which compiles first) and under CI,
+    // which compiles in its own step; `--no-compile` is used nowhere. Running it that way by
+    // hand would test a stale artifact — but so would every other test in this suite, which
+    // deploys from the same artifacts.
+    //
     // solc suggests `view` on an always-reverting override. Taking that suggestion silently
     // changes the ABI: consumers dispatch on `stateMutability`, so ethers v6 would route this
     // through `eth_call` rather than a transaction, and Safe{Wallet} would file it under

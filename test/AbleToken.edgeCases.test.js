@@ -263,13 +263,21 @@ describe("AbleToken — Edge cases and production readiness", function () {
     });
 
     it("transferOwnership to the zero address cannot strand ownership", async function () {
-      const { token, owner } = await loadFixture(deployFixture);
+      const { token, owner, addr1 } = await loadFixture(deployFixture);
       // Under Ownable2Step this sets pendingOwner, and address(0) can never call
       // acceptOwnership — so ownership stays put either way. pendingOwner is asserted as well
       // as owner: without it this test would still pass if OZ reinstated a zero-address guard
       // and made the call revert again, silently reverting to the old behaviour.
       await token.connect(owner).transferOwnership(ethers.ZeroAddress);
       expect(await token.pendingOwner()).to.equal(ethers.ZeroAddress);
+      expect(await token.owner()).to.equal(owner.address);
+
+      // And the mistake is recoverable: the owner overwrites the pending entry. Asserted here
+      // because it is the corrective action an operator would take on a live multisig, and
+      // because it would also red if OZ ever reinstated a zero-address revert — which would
+      // make this test's name wrong rather than merely its assertions incomplete.
+      await token.connect(owner).transferOwnership(addr1.address);
+      expect(await token.pendingOwner()).to.equal(addr1.address);
       expect(await token.owner()).to.equal(owner.address);
     });
   });
