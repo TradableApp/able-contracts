@@ -14,6 +14,11 @@ const {
 // All three abort at load or on first use with a message naming the cause — none of them is
 // allowed to leave the storage checks silently comparing nothing. The third is caught in
 // compiledLayout below; the two here.
+//
+// A fourth shape — a layout that is well-formed but wrong — is left to the assertions rather
+// than guarded: to reach them it would have to declare all five namespaces the deployed
+// implementation declares and be storage-compatible with them, which is what being a correct
+// layout for this contract means. Anything less fails the namespace-superset check by name.
 const VALIDATIONS_PATH = "@openzeppelin/hardhat-upgrades/dist/utils/validations";
 
 let readValidations;
@@ -62,6 +67,11 @@ const ABLE_TOKEN_NAMESPACE = "erc7201:openzeppelin.storage.AbleToken";
  *
  * Implementations are selected by the namespace this token declares, so an unrelated contract
  * deployed to Base through this same manifest cannot drag a foreign layout into the comparison.
+ *
+ * The LIVE_PROXY lookup below is a manifest-integrity check — it confirms this is the manifest
+ * for the token we mean — and NOT a proof that the returned layouts are the ones that proxy
+ * points at. No such proof is available offline; do not go looking for proxy-to-implementation
+ * mapping logic here, because the v3.2 format does not record the link.
  */
 function deployedLayouts() {
   const proxy = BASE_MANIFEST.proxies.find(

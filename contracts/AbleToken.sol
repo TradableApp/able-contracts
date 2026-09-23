@@ -94,6 +94,11 @@ contract AbleToken is
     // an omission there would not fail any test, it would only show up on a live deployment.
     // The order matters for that same reason: if Ownable2Step ever gains state, initialising it
     // before _owner is assigned could leave it referencing an owner that is still address(0).
+    //
+    // Scope: this covers FRESH proxy deployments only. initialize() is never re-run on an
+    // upgrade, so an already-deployed proxy moving to an OZ release that adds Ownable2Step
+    // state would get that state zero-initialised by the EVM, not by this call. Such an upgrade
+    // needs a reinitializer — which matters here, because the live proxy is exactly that case.
     __Ownable_init(_initialOwner);
     __Ownable2Step_init();
     __UUPSUpgradeable_init();
