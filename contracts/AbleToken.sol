@@ -40,6 +40,13 @@ contract AbleToken is
   ///      OpenZeppelin's `assertStorageUpgradeSafe` reject the upgrade ("Deleted namespace
   ///      `erc7201:openzeppelin.storage.AbleToken`"), which would block `upgradeProxy` on the
   ///      live proxy. Removing it buys nothing and costs the upgrade path.
+  ///
+  ///      Do not add fields either, and do not rename `_gap`. There is no accessor for this
+  ///      slot, so a new field would be unreachable while still widening the namespace the
+  ///      upgrade checker compares against the live deployment. A rename is rejected outright —
+  ///      `assertStorageUpgradeSafe` reports "Renamed `_gap` to ..." and the upgrade fails, so
+  ///      the misleading name is kept deliberately. Treat this struct as frozen: it is a marker
+  ///      for the upgrade checker, not storage.
   /// @custom:storage-location erc7201:openzeppelin.storage.AbleToken
   struct AbleTokenStorage {
     bool _gap; // Storage gap for future upgrades to prevent storage collisions.
@@ -85,6 +92,8 @@ contract AbleToken is
     // Do not remove it. The __Ownable2Step_init() call below is a no-op today and is kept so
     // that state added to Ownable2Step by a future OZ release is initialised automatically —
     // an omission there would not fail any test, it would only show up on a live deployment.
+    // The order matters for that same reason: if Ownable2Step ever gains state, initialising it
+    // before _owner is assigned could leave it referencing an owner that is still address(0).
     __Ownable_init(_initialOwner);
     __Ownable2Step_init();
     __UUPSUpgradeable_init();
