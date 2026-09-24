@@ -217,8 +217,16 @@ describe("AbleToken: The Truly Complete and Definitive Test Suite", function () 
   });
 
   describe("Ownership Functionality", function () {
-    it("should allow the owner to transfer ownership", async function () {
+    it("should transfer ownership in two steps", async function () {
+      // Ownable2Step: propose, then the recipient accepts. An address that cannot accept
+      // never becomes owner, so a mistyped address can no longer strand the contract.
       await expect(ableToken.connect(owner).transferOwnership(addr1.address))
+        .to.emit(ableToken, "OwnershipTransferStarted")
+        .withArgs(owner.address, addr1.address);
+      expect(await ableToken.owner()).to.equal(owner.address);
+      expect(await ableToken.pendingOwner()).to.equal(addr1.address);
+
+      await expect(ableToken.connect(addr1).acceptOwnership())
         .to.emit(ableToken, "OwnershipTransferred")
         .withArgs(owner.address, addr1.address);
       expect(await ableToken.owner()).to.equal(addr1.address);
@@ -230,11 +238,13 @@ describe("AbleToken: The Truly Complete and Definitive Test Suite", function () 
         .withArgs(addr1.address);
     });
 
-    it("should allow the owner to renounce ownership", async function () {
-      await expect(ableToken.connect(owner).renounceOwnership())
-        .to.emit(ableToken, "OwnershipTransferred")
-        .withArgs(owner.address, ethers.ZeroAddress);
-      expect(await ableToken.owner()).to.equal(ethers.ZeroAddress);
+    it("should NOT allow the owner to renounce ownership", async function () {
+      // Renouncing on an upgradeable, pausable token permanently strands pause/unpause and
+      // upgrade authority with no recovery path, so it is disabled.
+      await expect(
+        ableToken.connect(owner).renounceOwnership(),
+      ).to.be.revertedWithCustomError(ableToken, "OwnershipCannotBeRenounced");
+      expect(await ableToken.owner()).to.equal(owner.address);
     });
   });
 

@@ -212,7 +212,9 @@ describe("AbleToken — Edge cases and production readiness", function () {
 
     it("new owner can upgrade after ownership transfer", async function () {
       const { token, owner, addr1 } = await loadFixture(deployFixture);
+      // Ownable2Step: the transfer only completes once the recipient accepts.
       await token.connect(owner).transferOwnership(addr1.address);
+      await token.connect(addr1).acceptOwnership();
 
       const proxyAddress = await token.getAddress();
       const AbleTokenV2 = await ethers.getContractFactory("AbleTokenV2", addr1);
@@ -223,40 +225,60 @@ describe("AbleToken — Edge cases and production readiness", function () {
     });
   });
 
-  describe("Ownership — permanent lockout scenarios", function () {
-    it("renounced owner cannot pause", async function () {
+  // These previously documented what happens AFTER renouncing: pause, unpause and upgrade
+  // become permanently unreachable with no recovery. renounceOwnership() now reverts, so the
+  // lockout is unreachable by construction — these assert that, rather than the hazard.
+  describe("Ownership — permanent lockout is unreachable", function () {
+    it("owner keeps pause after a rejected renounce attempt", async function () {
       const { token, owner } = await loadFixture(deployFixture);
-      await token.connect(owner).renounceOwnership();
-      await expect(token.connect(owner).pause())
-        .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
-        .withArgs(owner.address);
+      await expect(
+        token.connect(owner).renounceOwnership(),
+      ).to.be.revertedWithCustomError(token, "OwnershipCannotBeRenounced");
+
+      await token.connect(owner).pause();
+      expect(await token.paused()).to.equal(true);
     });
 
-    it("renounced owner cannot unpause", async function () {
+    it("owner keeps unpause after a rejected renounce attempt", async function () {
       const { token, owner } = await loadFixture(deployFixture);
       await token.connect(owner).pause();
-      await token.connect(owner).renounceOwnership();
-      await expect(token.connect(owner).unpause())
-        .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
-        .withArgs(owner.address);
+      await expect(
+        token.connect(owner).renounceOwnership(),
+      ).to.be.revertedWithCustomError(token, "OwnershipCannotBeRenounced");
+
+      await token.connect(owner).unpause();
+      expect(await token.paused()).to.equal(false);
     });
 
-    it("renounced owner cannot upgrade", async function () {
+    it("owner keeps upgrade authority after a rejected renounce attempt", async function () {
       const { token, owner } = await loadFixture(deployFixture);
-      await token.connect(owner).renounceOwnership();
+      await expect(
+        token.connect(owner).renounceOwnership(),
+      ).to.be.revertedWithCustomError(token, "OwnershipCannotBeRenounced");
 
       const proxyAddress = await token.getAddress();
       const AbleTokenV2 = await ethers.getContractFactory("AbleTokenV2", owner);
-      await expect(upgrades.upgradeProxy(proxyAddress, AbleTokenV2))
-        .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
-        .withArgs(owner.address);
+      const upgraded = await upgrades.upgradeProxy(proxyAddress, AbleTokenV2);
+      expect(await upgraded.version()).to.equal("v2");
     });
 
-    it("transferOwnership to zero address reverts", async function () {
-      const { token, owner } = await loadFixture(deployFixture);
-      await expect(token.connect(owner).transferOwnership(ethers.ZeroAddress))
-        .to.be.revertedWithCustomError(token, "OwnableInvalidOwner")
-        .withArgs(ethers.ZeroAddress);
+    it("transferOwnership to the zero address cannot strand ownership", async function () {
+      const { token, owner, addr1 } = await loadFixture(deployFixture);
+      // Under Ownable2Step this sets pendingOwner, and address(0) can never call
+      // acceptOwnership — so ownership stays put either way. pendingOwner is asserted as well
+      // as owner: without it this test would still pass if OZ reinstated a zero-address guard
+      // and made the call revert again, silently reverting to the old behaviour.
+      await token.connect(owner).transferOwnership(ethers.ZeroAddress);
+      expect(await token.pendingOwner()).to.equal(ethers.ZeroAddress);
+      expect(await token.owner()).to.equal(owner.address);
+
+      // And the mistake is recoverable: the owner overwrites the pending entry. Asserted here
+      // because it is the corrective action an operator would take on a live multisig, and
+      // because it would also red if OZ ever reinstated a zero-address revert — which would
+      // make this test's name wrong rather than merely its assertions incomplete.
+      await token.connect(owner).transferOwnership(addr1.address);
+      expect(await token.pendingOwner()).to.equal(addr1.address);
+      expect(await token.owner()).to.equal(owner.address);
     });
   });
 
