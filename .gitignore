@@ -177,3 +177,7 @@ ignition/deployments/chain-31337
 .dmux-hooks/
 .dmux-session/
 .claude/PRPs/
+
+# Generated artifacts — not source
+file-structure.txt
+gas-report.txt

@@ -9,18 +9,9 @@ const {
   getStorageLayout,
   getVersion,
 } = require("@openzeppelin/upgrades-core");
-// Deep import, verified against @openzeppelin/hardhat-upgrades@3.9.1 — recheck this path when
-// bumping that dependency, since dist/ is internal and carries no semver guarantee.
-// hardhat-upgrades does not re-export this, so a plugin bump can break it three ways: the file
-// moves, the file survives but the export is renamed, or both survive and the signature changes.
-// All three abort at load or on first use with a message naming the cause — none of them is
-// allowed to leave the storage checks silently comparing nothing. The third is caught in
-// compiledLayout below; the two here.
-//
-// A fourth shape — a layout that is well-formed but wrong — is left to the assertions rather
-// than guarded: to reach them it would have to declare all five namespaces the deployed
-// implementation declares and be storage-compatible with them, which is what being a correct
-// layout for this contract means. Anything less fails the namespace-superset check by name.
+// Deep import, verified against @openzeppelin/hardhat-upgrades@3.9.1 — dist/ is internal and
+// carries no semver guarantee, so recheck on a plugin bump. A move or a rename aborts here with a
+// named failure; a changed signature is caught by compiledLayout below.
 const VALIDATIONS_PATH = "@openzeppelin/hardhat-upgrades/dist/utils/validations";
 
 let readValidations;
@@ -32,13 +23,8 @@ try {
 }
 
 /**
- * Both plugin-API guards, deferred to a before() hook rather than run at module load.
- *
- * Throwing at load would abort the whole hardhat run, so one broken import would take every
- * other test file in the repo down with it and report "An unexpected error occurred" instead of
- * a named failure. From a hook, mocha attributes the failure to this describe, skips only its
- * tests, and the rest of the suite still reports — which is what you want when triaging whether
- * a dependency bump broke the tooling or the contract.
+ * Both plugin-API guards, in a before() hook rather than at module load: throwing at load would
+ * abort the whole hardhat run and take every other test file down with it.
  */
 function assertPluginApiIntact() {
   if (importFailure) {
@@ -50,9 +36,6 @@ function assertPluginApiIntact() {
   }
 
   if (typeof readValidations !== "function") {
-    // The module loaded, so this is a renamed or withdrawn export rather than a move — say so,
-    // and list what the module does export, which is usually enough to spot the new name
-    // without anyone having to go and read the plugin.
     const exported = Object.keys(require(VALIDATIONS_PATH)).sort().join(", ");
     throw new Error(
       `${VALIDATIONS_PATH} loaded but does not export a readValidations function. ` +
@@ -62,9 +45,8 @@ function assertPluginApiIntact() {
   }
 }
 
-// The deployment manifest OpenZeppelin wrote for Base mainnet. This is the same artifact
-// `upgradeProxy` reads to decide whether an upgrade is safe, so it is the authoritative record
-// of what is actually deployed.
+// The manifest OpenZeppelin wrote for Base mainnet — the same artifact upgradeProxy reads, so it
+// is the authoritative record of what is deployed.
 const BASE_MANIFEST = require("../.openzeppelin/base.json");
 const LIVE_PROXY = "0xD77FF82e661C3838a59ea78bbF31F8c4c2BD8A80";
 
@@ -76,30 +58,12 @@ const START_ANCHOR = "  ) public initializer {";
 const END_ANCHOR = "    _mint(_initialOwner, _initialSupply);";
 
 /**
- * Every AbleToken implementation the manifest records as having been deployed on Base.
+ * Every AbleToken implementation the manifest records on Base.
  *
- * The v3.2 manifest format stores no proxy -> implementation reference (a proxy entry carries
- * only address, txHash and kind), so there is no machine-readable way to ask which single
- * implementation the proxy currently points at without querying the chain. Rather than guess
- * positionally or pin an address by hand — both of which need a human to remember something
- * after every mainnet upgrade — validate against ALL of them.
- *
- * That needs no maintenance, and checking all of them is never weaker than checking only the
- * newest. Be precise about why, because the obvious argument runs the wrong way: IF every
- * historical upgrade was additive, then compatibility with the newest already implies
- * compatibility with the older ones and checking them all is merely redundant. The value is in
- * not having to assume that. Where the assumption fails — a migration done with
- * unsafeSkipStorageCheck, or a layout edited by hand — an older baseline catches what the newest
- * would wave through. So this is equivalent in the good case and stricter in the bad one, which
- * is the right shape for a check whose job is to fail.
- *
- * Implementations are selected by the namespace this token declares, so an unrelated contract
- * deployed to Base through this same manifest cannot drag a foreign layout into the comparison.
- *
- * The LIVE_PROXY lookup below is a manifest-integrity check — it confirms this is the manifest
- * for the token we mean — and NOT a proof that the returned layouts are the ones that proxy
- * points at. No such proof is available offline; do not go looking for proxy-to-implementation
- * mapping logic here, because the v3.2 format does not record the link.
+ * The v3.2 manifest stores no proxy -> implementation reference, so validate against ALL of them
+ * rather than pinning one by hand. Equivalent in the good case and stricter in the bad one: where
+ * an upgrade skipped the storage check, an older baseline catches what the newest waves through.
+ * Selected by this token's namespace, so a foreign layout cannot enter the comparison.
  */
 function deployedLayouts() {
   const proxy = BASE_MANIFEST.proxies.find(
@@ -128,13 +92,8 @@ function deployedLayouts() {
 }
 
 /**
- * The storage layout the current sources compile to.
- *
- * The returned layout is sanity-checked rather than trusted. The readValidations import above is
- * an internal one, and a restructuring that kept the name but changed the signature would satisfy
- * the typeof guard while handing back something useless — at which point a storage check that
- * compares nothing against nothing would quietly pass. An empty namespace map is not a valid
- * layout for this contract under any circumstances, so treat it as the plugin having moved.
+ * The storage layout the current sources compile to, sanity-checked rather than trusted: a plugin
+ * change that kept the name but altered the signature would leave the checks comparing nothing.
  */
 async function compiledLayout(contractName) {
   const validations = await readValidations(hre);
@@ -149,10 +108,8 @@ async function compiledLayout(contractName) {
     );
   }
 
-  // Non-empty is not the same as right. Without this, a layout belonging to some other contract
-  // would reach assertStorageUpgradeSafe and fail as "Deleted namespace erc7201:...AbleToken" —
-  // the identical message you get from actually deleting the struct from the source. A tooling
-  // fault would then read as a source fault, and be "fixed" in the wrong file.
+  // Non-empty is not the same as right: another contract's layout would fail as "Deleted namespace
+  // erc7201:...AbleToken" — identical to the message for actually deleting the struct.
   if (!layout.namespaces[ABLE_TOKEN_NAMESPACE]) {
     throw new Error(
       `Compiled layout for ${contractName} does not declare ${ABLE_TOKEN_NAMESPACE}. ` +
@@ -236,8 +193,7 @@ describe("AbleToken — security hardening", function () {
 
       await token.connect(owner).transferOwnership(newOwner.address);
 
-      // The pending entry is public, so the window between propose and accept is visible to
-      // anyone watching. OZ guards it; a hardening suite should say so rather than assume it.
+      // The pending entry is public, so the propose/accept window is visible to anyone watching.
       await expect(token.connect(stranger).acceptOwnership())
         .to.be.revertedWithCustomError(token, "OwnableUnauthorizedAccount")
         .withArgs(stranger.address);
@@ -258,9 +214,7 @@ describe("AbleToken — security hardening", function () {
       expect(await token.owner()).to.equal(owner.address);
     });
 
-    // The two callers get different errors by design (see the @dev note on the function):
-    // a non-owner is told they are not the owner, the owner is told the operation is disabled.
-    // Pinned because it is a documented choice, not an accident of modifier ordering.
+    // A documented split, not an accident of modifier ordering: see the @dev note on the function.
     it("tells a non-owner they are unauthorised rather than that renouncing is disabled", async function () {
       const { token, stranger } = await loadFixture(deployProxyFixture);
 
@@ -269,17 +223,9 @@ describe("AbleToken — security hardening", function () {
         .withArgs(stranger.address);
     });
 
-    // Reads the on-disk artifact, so it asserts what was last compiled. That is the current
-    // source under `bun run test` (plain `hardhat test`, which compiles first) and under CI,
-    // which compiles in its own step; `--no-compile` is used nowhere. Running it that way by
-    // hand would test a stale artifact — but so would every other test in this suite, which
-    // deploys from the same artifacts.
-    //
-    // solc suggests `view` on an always-reverting override. Taking that suggestion silently
-    // changes the ABI: consumers dispatch on `stateMutability`, so ethers v6 would route this
-    // through `eth_call` rather than a transaction, and Safe{Wallet} would file it under
-    // read-only instead of the admin write panel. The override must stay nonpayable, like the
-    // OwnableUpgradeable function it replaces.
+    // solc suggests `view` on an always-reverting override. Taking it changes the ABI: consumers
+    // dispatch on stateMutability, so ethers would route this through eth_call rather than a
+    // transaction, and wallets would file it under reads instead of admin writes.
     it("keeps the inherited nonpayable ABI rather than taking solc's view suggestion", async function () {
       const { abi } = await hre.artifacts.readArtifact("AbleToken");
       const fn = abi.find(
@@ -291,14 +237,8 @@ describe("AbleToken — security hardening", function () {
     });
   });
 
-  // __Ownable2Step_init() is an empty body in OZ v5, so there is nothing observable at runtime
-  // to assert — the call is kept purely so that state a future OZ release adds to Ownable2Step
-  // is initialised on fresh deployments. That makes it exactly the kind of line a cleanup
-  // deletes as dead code, with nothing to red. A source assertion is a blunt instrument and is
-  // used deliberately, for the same reason the ABI test exists: a comment saying "do not remove"
-  // loses to a reader who can see the function is empty.
-  // initialize() calling __Ownable2Step_init() has no observable effect today, so no
-  // behavioural test can see it disappear. Asserted against the source text instead.
+  // __Ownable2Step_init() is an empty body in OZ v5, so nothing observable at runtime can assert
+  // it — exactly the kind of line a cleanup deletes with nothing to red. Hence a source assertion.
   describe("the Ownable2Step initialiser call is not quietly dropped", function () {
     it("initialize() still calls __Ownable2Step_init()", async function () {
       const source = await fs.readFile(
@@ -331,26 +271,17 @@ describe("AbleToken — security hardening", function () {
     });
   });
 
-  // The hardening changes the inheritance chain and the contract's declared storage. Neither may
-  // break the upgrade path of the token already live on Base mainnet: if it does, the proxy is
-  // stranded on its current implementation forever.
-  //
-  // The comparison is made against the deployment manifest, NOT against a copy of the deployed
-  // source. A hand-written Solidity baseline was tried first and was silently wrong: `__gap` was
-  // added to AbleToken.sol four months AFTER the deployment (cea89f5) with no redeploy, so the
-  // copy carried a variable the live implementation does not have. A copy drifts; the manifest
-  // records what was actually deployed and cannot.
+  // Compared against the deployment MANIFEST, not a copy of the deployed source. A hand-written
+  // Solidity baseline was tried first and was silently wrong: __gap was added four months after
+  // the deployment with no redeploy, so the copy carried a variable the live code does not have.
   describe("remains a storage-compatible upgrade of the live Base mainnet proxy", function () {
     it("passes OpenZeppelin's storage check against every deployed implementation", async function () {
       const current = await compiledLayout("AbleToken");
 
       for (const { address, layout } of deployedLayouts()) {
-        // Throws with OZ's own diagnosis — "Deleted namespace ...", "Inserted variable ..." —
-        // which names the offending change. Re-deleting the erc7201 struct reds this.
+        // Throws with OZ's own diagnosis, naming the offending change. {} is strict mode:
+        // do not add unsafeAllow* here to unblock a failure — it means the upgrade is unsafe.
         try {
-          // {} is strict mode, not a placeholder: unsafeAllowRenames, unsafeSkipStorageCheck
-          // and the rest all default to false. Do not add allowances here to unblock a failing
-          // test — a failure here means the upgrade is genuinely unsafe.
           assertStorageUpgradeSafe(layout, current, {});
         } catch (error) {
           error.message = `against deployed implementation ${address}:\n${error.message}`;
@@ -362,9 +293,8 @@ describe("AbleToken — security hardening", function () {
     it("still declares every storage namespace the deployed implementations declare", async function () {
       const current = await compiledLayout("AbleToken");
 
-      // Stated separately from the check above because this is the specific failure that nearly
-      // shipped: dropping the inert `AbleTokenStorage` struct deletes a namespace the live
-      // implementation declares, and OZ rejects the upgrade even though the struct held no data.
+      // The failure that nearly shipped: dropping the inert AbleTokenStorage struct deletes a
+      // namespace the live implementation declares, and OZ rejects the upgrade.
       for (const { address, layout } of deployedLayouts()) {
         expect(
           Object.keys(current.namespaces),
