@@ -35,21 +35,12 @@ contract AbleToken is
   UUPSUpgradeable
 {
   /// @notice Retained solely to preserve the deployed ERC-7201 storage namespace.
-  /// @dev Nothing reads or writes this struct — it never held live data. It must nevertheless
-  ///      stay declared: deleting a namespace that the deployed implementation declared makes
-  ///      OpenZeppelin's `assertStorageUpgradeSafe` reject the upgrade ("Deleted namespace
-  ///      `erc7201:openzeppelin.storage.AbleToken`"), which would block `upgradeProxy` on the
-  ///      live proxy. Removing it buys nothing and costs the upgrade path.
-  ///
-  ///      Do not add fields either, and do not rename `_gap`. There is no accessor for this
-  ///      slot, so a new field would be unreachable while still widening the namespace the
-  ///      upgrade checker compares against the live deployment. A rename is rejected outright —
-  ///      `assertStorageUpgradeSafe` reports "Renamed `_gap` to ..." and the upgrade fails, so
-  ///      the misleading name is kept deliberately. Treat this struct as frozen: it is a marker
-  ///      for the upgrade checker, not storage.
+  /// @dev Nothing reads or writes this struct. It must stay declared and unchanged: deleting or
+  ///      renaming a namespace that the deployed implementation declared makes OpenZeppelin's
+  ///      `assertStorageUpgradeSafe` reject the upgrade, stranding the live proxy.
   /// @custom:storage-location erc7201:openzeppelin.storage.AbleToken
   struct AbleTokenStorage {
-    bool _gap; // Frozen — do not add, remove or rename. See the NatSpec above.
+    bool _gap; // Frozen — do not add, remove or rename.
   }
 
   /// @notice Thrown by {renounceOwnership} — ownership of this token cannot be abandoned.
@@ -57,12 +48,9 @@ contract AbleToken is
 
   /**
    * @notice Locks the implementation contract so it can never be initialised directly.
-   * @dev Without this, anyone can call {initialize} on the implementation that sits behind
-   *      the proxy and become its owner. That cannot reach the proxy's storage, and OZ v5's
-   *      `onlyProxy` guard blocks upgrading through it — but it does leave an attacker with a
-   *      source-verified, identical-bytecode "ABLE Token" at a real address, which is ideal
-   *      material for fake liquidity pools and phishing. OpenZeppelin's documented rule is
-   *      blunt: "Do not leave an implementation contract uninitialized."
+   * @dev An uninitialised implementation can be claimed by anyone. That cannot reach the proxy's
+   *      storage, but it does leave a source-verified, identical-bytecode "ABLE Token" at a real
+   *      address — ideal material for fake liquidity pools and phishing.
    */
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -87,21 +75,11 @@ contract AbleToken is
     __ERC20_init(_name, _symbol);
     __ERC20Burnable_init();
     __ERC20Pausable_init();
-    // __Ownable_init is what actually assigns _owner, and it is required: OZ v5's
-    // __Ownable2Step_init() is an empty body that does NOT chain to __Ownable_init_unchained().
-    // Do not remove it. The __Ownable2Step_init() call below is a no-op today and is kept so
-    // that state added to Ownable2Step by a future OZ release is initialised automatically —
-    // an omission there would not fail any test, it would only show up on a live deployment.
-    // The order matters for that same reason: if Ownable2Step ever gains state, initialising it
-    // before _owner is assigned could leave it referencing an owner that is still address(0).
-    //
-    // Scope: this covers FRESH proxy deployments only. initialize() is never re-run on an
-    // upgrade, so an already-deployed proxy moving to an OZ release that adds Ownable2Step
-    // state would get that state zero-initialised by the EVM, not by this call. Such an upgrade
-    // needs a reinitializer — which matters here, because the live proxy is exactly that case.
-    // Nothing reds if this is missed: it surfaces only once the new OZ version is in use. The
-    // check belongs in the review of any contracts-upgradeable bump, and is tracked so it does
-    // not live only here — see https://app.clickup.com/t/14ym9bv7dy4
+    // __Ownable_init assigns _owner and is required: OZ v5's __Ownable2Step_init() is an empty
+    // body that does not chain to it. __Ownable2Step_init() is a no-op today, called so that any
+    // state a future OZ release adds is initialised — and called second, so it can never observe
+    // a zero owner. This runs on fresh deployments only: upgrading the live proxy onto a release
+    // that adds Ownable2Step state would need a reinitializer.
     __Ownable_init(_initialOwner);
     __Ownable2Step_init();
     __UUPSUpgradeable_init();
@@ -128,32 +106,17 @@ contract AbleToken is
 
   /**
    * @notice Disabled — ownership of this token cannot be renounced.
-   * @dev Inherited {renounceOwnership} would set the owner to address(0) permanently, which on
-   *      an upgradeable, pausable token means no further {pause}, {unpause} or upgrade is ever
-   *      possible. There is no recovery from that, so the function is made to revert rather
-   *      than left reachable.
+   * @dev Renouncing would set the owner to address(0) permanently, leaving an upgradeable,
+   *      pausable token that can never again be paused, unpaused or upgraded. Inheriting
+   *      {Ownable2StepUpgradeable} does not cover this: it overrides `transferOwnership` but
+   *      leaves `renounceOwnership` as the inherited single-step version.
    *
-   *      Switching to {Ownable2StepUpgradeable} does not make this unnecessary. That contract
-   *      overrides `transferOwnership` and `_transferOwnership`, but deliberately leaves
-   *      `renounceOwnership` alone — it is still `OwnableUpgradeable`'s, which calls
-   *      `_transferOwnership(address(0))` in a single step with no pending-owner to accept.
-   *      Two-step ownership protects transfers, not renouncing. This override is the only
-   *      thing standing between the token and a permanently ownerless proxy, so do not remove
-   *      it on the reasoning that the base class now handles ownership safely.
+   *      `onlyOwner` is kept so a non-owner gets {OwnableUnauthorizedAccount} while the owner
+   *      gets {OwnershipCannotBeRenounced}.
    *
-   *      `onlyOwner` is kept, so a non-owner receives {OwnableUnauthorizedAccount} while the
-   *      owner receives {OwnershipCannotBeRenounced}. That split is deliberate: each caller is
-   *      told the thing that is true of them, and it keeps the modifier set identical to the
-   *      inherited function being replaced. Dropping it would report the policy to callers who
-   *      are also not authorised, which is less informative, not more.
-   *
-   *      solc warns "Function state mutability can be restricted to view" here. Do NOT act on
-   *      it. Marking this `view` flips the ABI's `stateMutability` from `nonpayable` to `view`,
-   *      and consumers dispatch on that field: ethers v6 sends `view` calls through `eth_call`
-   *      instead of a transaction, and Safe{Wallet} files them under read-only rather than the
-   *      admin write panel next to {pause} and {transferOwnership}. The warning is unavoidable
-   *      for any always-reverting override — `onlyOwner` reads state but writes none — so it is
-   *      accepted deliberately in exchange for an ABI that matches the inherited function.
+   *      solc suggests `view` here; do not apply it. That flips the ABI's `stateMutability`, and
+   *      consumers dispatch on it — ethers routes `view` through `eth_call` rather than a
+   *      transaction, and wallets file it under reads rather than admin writes.
    */
   function renounceOwnership() public override onlyOwner {
     revert OwnershipCannotBeRenounced();
@@ -185,11 +148,9 @@ contract AbleToken is
     // Intentionally left blank. The onlyOwner modifier provides the necessary access control.
   }
 
-  /// @dev Reserved slots for future non-namespaced storage. Note this is NOT present in the
-  ///      implementation currently deployed behind the live proxies: it was added after that
-  ///      deployment, so `.openzeppelin/base.json` records `storage: []` for the deployed
-  ///      implementation while every artifact built from this source carries the gap. That
-  ///      difference is an append, which OpenZeppelin permits, and is asserted by the storage
-  ///      tests — but do not try to reconcile the two layouts by eye and conclude one is wrong.
+  /// @dev Reserved slots for future non-namespaced storage. Not present in the implementation
+  ///      currently deployed behind the live proxies — it was added after that deployment. The
+  ///      difference is an append, which OpenZeppelin permits, and the storage tests assert it
+  ///      against the deployment manifest.
   uint256[50] private __gap;
 }

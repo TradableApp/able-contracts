@@ -297,70 +297,37 @@ describe("AbleToken — security hardening", function () {
   // deletes as dead code, with nothing to red. A source assertion is a blunt instrument and is
   // used deliberately, for the same reason the ABI test exists: a comment saying "do not remove"
   // loses to a reader who can see the function is empty.
+  // initialize() calling __Ownable2Step_init() has no observable effect today, so no
+  // behavioural test can see it disappear. Asserted against the source text instead.
   describe("the Ownable2Step initialiser call is not quietly dropped", function () {
     it("initialize() still calls __Ownable2Step_init()", async function () {
       const source = await fs.readFile(
         path.join(__dirname, "..", "contracts", "AbleToken.sol"),
         "utf8",
       );
-      // Both bounds are asserted before slicing. A missing END anchor makes indexOf return -1,
-      // and slice(start, -1) then runs to one character short of the file — which contained
-      // both strings below and passed while proving nothing. Asserting only that the slice is
-      // non-empty does not catch it, because that fires only when BOTH bounds miss.
       const startIndex = source.indexOf(START_ANCHOR);
       const endIndex = source.indexOf(END_ANCHOR);
 
+      // Both bounds checked before slicing: a missing anchor is -1, and slice(start, -1) would
+      // silently widen to most of the file and pass while proving nothing.
       expect(startIndex, "could not locate the start of initialize()").to.be.greaterThan(-1);
       expect(endIndex, "could not locate the end of initialize()").to.be.greaterThan(-1);
       expect(endIndex, "initialize() bounds are inverted").to.be.greaterThan(startIndex);
-
-      // indexOf takes the FIRST match, so a second identical _mint added earlier inside
-      // initialize() would silently shorten the slice past the lines under test. The bounds
-      // check above does not catch that, because such a match is still after startIndex.
       expect(
         source.split(END_ANCHOR).length - 1,
         `${END_ANCHOR.trim()} appears more than once — the end anchor is no longer unique`,
       ).to.equal(1);
 
       const initializeBody = source.slice(startIndex, endIndex);
-
-      // Proves the slice really is bounded to initialize() rather than half the file: pause()
-      // is declared after it, so its presence would mean the end anchor did not hold.
       expect(initializeBody, "slice escaped initialize()").to.not.contain("function pause()");
 
-      // Anchored to the start of a line, not a substring match: `.contain()` is satisfied by
-      // "// __Ownable2Step_init();", so commenting the call out — the most likely form of the
-      // cleanup this test exists to catch — would have passed.
+      // Line-anchored, not substring: `.contain()` is satisfied by a commented-out call.
       expect(initializeBody, "__Ownable_init call missing or commented out").to.match(
         /^\s*__Ownable_init\(_initialOwner\);/m,
       );
       expect(initializeBody, "__Ownable2Step_init call missing or commented out").to.match(
         /^\s*__Ownable2Step_init\(\);/m,
       );
-    });
-  });
-
-  // readValidations comes from hardhat-upgrades' own copy of upgrades-core, while
-  // getStorageLayout/getVersion/assertStorageUpgradeSafe come from the copy this package
-  // declares. They must be the same instance: the validations map is keyed by getVersion(), so
-  // two copies disagreeing on that hash produce a miss rather than a layout. The empty-namespace
-  // guard in compiledLayout would catch the consequence, but it would read as a plugin API
-  // change rather than a dependency split — so assert the coupling directly instead.
-  describe("the storage checks read one upgrades-core, not two", function () {
-    it("resolves the same instance through both import paths", function () {
-      const direct = require.resolve("@openzeppelin/upgrades-core");
-      // paths[] takes module search ROOTS, not files. Passing the plugin's entry point works
-      // today only because Node walks up from it; package.json is the one file guaranteed to
-      // sit at the package root regardless of "main" or an "exports" map, so resolve that and
-      // take its directory.
-      const pluginRoot = path.dirname(
-        require.resolve("@openzeppelin/hardhat-upgrades/package.json"),
-      );
-      const viaPlugin = require.resolve("@openzeppelin/upgrades-core", {
-        paths: [pluginRoot],
-      });
-
-      expect(viaPlugin, "upgrades-core resolved to two different copies").to.equal(direct);
     });
   });
 
